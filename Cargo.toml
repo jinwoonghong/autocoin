@@ -1,0 +1,70 @@
+[package]
+name = "autocoin"
+version = "0.1.0"
+edition = "2021"
+authors = ["AutoCoin Team"]
+description = "Upbit Automated Trading Agent System"
+
+[dependencies]
+# Async Runtime
+tokio = { version = "1.40", features = ["full"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono"] }
+
+# Web
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Authentication
+jsonwebtoken = "9.3"
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+
+# Error Handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Configuration
+dotenvy = "0.15"
+config = "0.14"
+toml = "0.8"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Concurrency
+async-trait = "0.1"
+
+# Discord Notification
+serde_urlencoded = "0.7"
+
+# Rate Limiting
+governor = "0.6"
+
+# Utilities
+hex = "0.4"
+flate2 = "1.0"
+urlencoding = "2.1"
+uuid = { version = "1.11", features = ["v4", "serde"] }
+futures-util = "0.3"
+
+[dev-dependencies]
+mockito = "1.5"
+tokio-test = "0.4"
+wiremock = "0.6"
+
+[[bin]]
+name = "autocoin"
+path = "src/main.rs"
+
+[lib]
+name = "autocoin"
+path = "src/lib.rs"
