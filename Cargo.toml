@@ -56,10 +56,18 @@ urlencoding = "2.1"
 uuid = { version = "1.11", features = ["v4", "serde"] }
 futures-util = "0.3"
 
+# TUI Framework
+ratatui = "0.28"
+crossterm = "0.28"
+
+# CLI Parsing
+clap = { version = "4.5", features = ["derive"] }
+
 [dev-dependencies]
 mockito = "1.5"
 tokio-test = "0.4"
 wiremock = "0.6"
+criterion = "0.5"
 
 [[bin]]
 name = "autocoin"

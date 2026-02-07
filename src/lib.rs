@@ -18,7 +18,9 @@
 
 // Public modules
 pub mod config;
+pub mod dashboard;
 pub mod error;
+pub mod execution;
 pub mod types;
 
 // Private modules
