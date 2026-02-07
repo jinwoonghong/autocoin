@@ -144,8 +144,10 @@ impl Default for IndicatorCache {
 }
 
 // 서브모듈
+pub mod bollinger;
 pub mod moving_average;
 pub mod rsi;
+pub mod macd;
 
 #[cfg(test)]
 mod tests {

@@ -17,6 +17,7 @@
 //! MIT License
 
 // Public modules
+pub mod backtest;
 pub mod config;
 pub mod dashboard;
 pub mod error;
@@ -33,9 +34,13 @@ mod discord;
 mod strategy;
 
 // Re-exports for convenience
+pub use backtest::{
+    BacktestConfig, BacktestResult, BacktestSimulator, OptimizationResult, OptimizationTarget,
+    ParamRange, ParameterOptimizer, PerformanceMetrics, Trade,
+};
 pub use error::TradingError;
 pub use indicators::{Indicator, IndicatorCache, IndicatorValue};
-pub use strategy::{Strategy, StrategyFactory};
+pub use strategy::{Strategy, StrategyFactory, StrategyManager, StrategyError};
 pub use strategy::momentum::MomentumStrategy;
 pub use types::trading::*;
 
