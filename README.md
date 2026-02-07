@@ -4,7 +4,7 @@ Upbit Automated Trading Agent System
 
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Spec](https://img.shields.io/badge/SPEC-TRADING--003-blue.svg)](.moai/specs/SPEC-TRADING-003/spec.md)
+[![Spec](https://img.shields.io/badge/SPEC-TRADING--004-blue.svg)](.moai/specs/SPEC-TRADING-004/spec.md)
 
 ## Overview (개요)
 
@@ -20,7 +20,18 @@ AutoCoin은 Upbit API를 활용한 자동 트레이딩 에이전트 시스템입
 - **Risk Manager Agent**: 손절/익절 자동 실행
 - **Notification Agent**: Discord Webhook을 통한 실시간 알림
 
-### New Features v0.2.0 (신규 기능)
+### New Features v0.3.0 (신규 기능)
+
+- **Web Dashboard**: Next.js 16 + React 19 기반 웹 대시보드
+- **Real-time WebSocket**: 실시간 가격 업데이트 및 트레이딩 상태 동기화
+- **Responsive Design**: 데스크톱/모바일 반응형 UI
+- **Dark Mode**: 다크/라이트 테마 지원
+- **Interactive Charts**: Recharts 기반 PnL 차트 및 시장 데이터 시각화
+- **Settings Management**: 웹 기반 전략 파라미터 및 리스크 관리 설정
+- **Manual Trading**: 웹 대시보드에서 수동 매수/매도 기능
+- **REST API**: Axum 기반 REST API 엔드포인트
+
+### v0.2.0 Features
 
 - **CLI Dashboard**: ratatui 기반 TUI 대시보드로 실시간 상태 모니터링
 - **24h Execution**: 데몬 모드, 워치독, systemd/Task Scheduler로 24시간 운영
@@ -47,6 +58,7 @@ AutoCoin은 Upbit API를 활용한 자동 트레이딩 에이전트 시스템입
 ## Prerequisites (사전 요구사항)
 
 - **Rust**: 1.85 이상
+- **Node.js**: 20+ (웹 대시보드)
 - **Upbit API Account**: [Upbit Open API](https://docs.upbit.com/) 키 발급 필요
 - **Discord Webhook** (선택): 거래 알림을 받을 Discord 웹훅 URL
 
@@ -173,7 +185,37 @@ cargo run -- --daemon
 
 # 백그라운드 실행 (Linux/macOS)
 nohup ./target/release/autocoin --daemon > logs/autocoin.log 2>&1 &
+
+# 웹 대시보드와 함께 실행
+cargo run -- --web
 ```
+
+### Web Dashboard (웹 대시보드)
+
+웹 대시보드를 실행하여 브라우저에서 트레이딩 시스템을 모니터링하고 제어할 수 있습니다:
+
+```bash
+# 1. 웹 서버와 함께 트레이딩 봇 시작
+cargo run -- --web
+
+# 2. 별도로 웹 프론트엔드 시작
+cd web
+npm install
+npm run dev
+
+# 3. 브라우저에서 접속
+# http://localhost:3000
+```
+
+웹 대시보드 기능:
+- **Dashboard**: 포트폴리오 요약, 현재 포지션, PnL 차트, 최근 거래
+- **Markets**: 실시간 시장 데이터 및 가격 모니터링
+- **Trades**: 거래 내역 조회 및 필터링
+- **Backtest**: 백테스팅 설정 및 결과 분석
+- **Settings**: 전략 파라미터, 리스크 관리, 시스템 제어
+- **Real-time Updates**: WebSocket 기반 실시간 데이터 동기화
+- **Dark Mode**: 다크/라이트 테마 전환
+- **Responsive**: 모바일 최적화 레이아웃
 
 ### First Launch Safety (첫 실행 안전장치)
 
@@ -367,6 +409,17 @@ autocoin/
 ├── systemd/              # systemd 서비스 파일 (v0.2.0)
 ├── taskscheduler/        # Windows Task Scheduler (v0.2.0)
 ├── data/                 # 데이터 디렉토리 (Git 제외)
+├── web/                  # 웹 대시보드 (v0.3.0)
+│   ├── app/              # Next.js 16 App Router
+│   ├── components/       # React 컴포넌트
+│   ├── lib/              # 유틸리티 및 API 클라이언트
+│   └── package.json
+├── src/web/              # 웹 서버 (Axum) (v0.3.0)
+│   ├── handlers.rs       # REST API 핸들러
+│   ├── websocket.rs      # WebSocket 핸들러
+│   ├── server.rs         # 웹 서버 구현
+│   ├── state.rs          # 공유 상태 관리
+│   └── routes.rs         # 라우트 정의
 ├── .moai/                # MoAI-ADK 설정
 ├── .env.example          # 환경 변수 예시
 ├── Cargo.toml
@@ -406,6 +459,36 @@ autocoin/
 | `?` | 도움말 표시 |
 | `Ctrl+C` | 강제 종료 |
 
+## Web Dashboard API (웹 대시보드 API)
+
+### REST Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | 헬스 체크 |
+| GET | `/api/status` | 시스템 상태 조회 |
+| GET | `/api/balance` | 잔고 조회 |
+| GET | `/api/position` | 현재 포지션 조회 |
+| GET | `/api/trades` | 거래 내역 조회 |
+| GET | `/api/markets` | 시장 데이터 조회 |
+| GET | `/api/dashboard` | 대시보드 데이터 통합 조회 |
+| GET | `/api/agents/status` | 에이전트 상태 조회 |
+| POST | `/api/orders` | 수동 주문 생성 |
+| DELETE | `/api/position` | 포지션 청산 |
+| PUT | `/api/settings` | 설정 업데이트 |
+| POST | `/api/trading/pause` | 트레이딩 일시정지 |
+| POST | `/api/trading/resume` | 트레이딩 재개 |
+
+### WebSocket Events
+
+| Event | Description |
+|-------|-------------|
+| `price_update` | 실시간 가격 업데이트 |
+| `trade_executed` | 주문 체결 알림 |
+| `position_update` | 포지션 변경 알림 |
+| `agent_status` | 에이전트 상태 변경 |
+| `notification` | 시스템 알림 |
+
 ## License (라이선스)
 
 MIT License - [LICENSE](LICENSE) 파일을 참조하세요
@@ -416,5 +499,6 @@ MIT License - [LICENSE](LICENSE) 파일을 참조하세요
 - [SPEC-TRADING-001](.moai/specs/SPEC-TRADING-001/spec.md) - 시스템 사양서
 - [SPEC-TRADING-002](.moai/specs/SPEC-TRADING-002/spec.md) - CLI 대시보드 사양서
 - [SPEC-TRADING-003](.moai/specs/SPEC-TRADING-003/spec.md) - 고급 전략 사양서
+- [SPEC-TRADING-004](.moai/specs/SPEC-TRADING-004/spec.md) - 웹 대시보드 사양서
 - [ARCHITECTURE.md](ARCHITECTURE.md) - 아키텍처 상세 문서
 - [API.md](API.md) - API 통합 문서
