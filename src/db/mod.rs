@@ -169,6 +169,34 @@ impl Database {
         .execute(pool)
         .await?;
 
+        // 지표 캐시 테이블 (REQ-304)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS indicator_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                market TEXT NOT NULL,
+                indicator_type TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                value REAL NOT NULL,
+                metadata TEXT,
+                created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+                UNIQUE(market, indicator_type, timestamp)
+            )
+            "#,
+        )
+        .execute(pool)
+        .await?;
+
+        // 지표 캐시 인덱스
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_indicator_cache_market_time
+            ON indicator_cache(market, indicator_type, timestamp DESC)
+            "#,
+        )
+        .execute(pool)
+        .await?;
+
         tracing::info!("Database migrations completed");
         Ok(())
     }

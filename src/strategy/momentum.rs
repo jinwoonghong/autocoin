@@ -1,9 +1,11 @@
 //! Momentum following strategy
 //!
 //! 가격 급등과 거래량 급증을 감지하는 모멘텀 전략입니다.
+//! SPEC-TRADING-003: Strategy 트레이트 구현
 
-use crate::types::{PriceTick, Signal, SignalType};
-use std::collections::VecDeque;
+use crate::strategy::Strategy;
+use crate::types::{Candle, PriceTick, Signal, SignalType};
+use std::collections::{HashMap, VecDeque};
 
 /// 모멘텀 전략
 ///
@@ -128,6 +130,70 @@ impl MomentumStrategy {
     pub fn clear_history(&mut self) {
         self.price_history.clear();
     }
+
+    /// 전략 초기화 (Strategy trait)
+    pub fn reset(&mut self) {
+        self.clear_history();
+    }
+}
+
+// Strategy trait 구현
+impl Strategy for MomentumStrategy {
+    fn on_candle(&mut self, candle: &Candle) -> Option<Signal> {
+        // Candle을 PriceTick으로 변환
+        let tick = PriceTick::new(
+            candle.market.clone(),
+            candle.timestamp.timestamp_millis(),
+            candle.close_price,
+            candle.change_rate(),
+            candle.volume,
+        );
+
+        // 기존 로직 재사용
+        self.update_and_analyze(tick)
+    }
+
+    fn get_name(&self) -> &str {
+        "Momentum"
+    }
+
+    fn get_parameters(&self) -> HashMap<String, f64> {
+        let mut params = HashMap::new();
+        params.insert("surge_threshold".to_string(), self.surge_threshold);
+        params.insert("volume_multiplier".to_string(), self.volume_multiplier);
+        params.insert("timeframe_minutes".to_string(), self.timeframe_minutes as f64);
+        params
+    }
+
+    fn set_parameters(&mut self, params: HashMap<String, f64>) -> Result<(), Box<dyn std::error::Error>> {
+        // REQ-301: 파라미터 유효성 검증 (surge_threshold > 0, volume_multiplier > 0, timeframe_minutes > 0)
+        if let Some(&threshold) = params.get("surge_threshold") {
+            if threshold <= 0.0 {
+                return Err("surge_threshold must be positive".into());
+            }
+            self.surge_threshold = threshold;
+        }
+
+        if let Some(&multiplier) = params.get("volume_multiplier") {
+            if multiplier <= 0.0 {
+                return Err("volume_multiplier must be positive".into());
+            }
+            self.volume_multiplier = multiplier;
+        }
+
+        if let Some(&timeframe) = params.get("timeframe_minutes") {
+            if timeframe <= 0.0 {
+                return Err("timeframe_minutes must be positive".into());
+            }
+            self.timeframe_minutes = timeframe as u64;
+        }
+
+        Ok(())
+    }
+
+    fn reset(&mut self) {
+        self.clear_history();
+    }
 }
 
 #[cfg(test)]
@@ -201,5 +267,184 @@ mod tests {
         ));
 
         assert!(signal.is_none());
+    }
+
+    // Strategy trait tests
+
+    #[test]
+    fn test_strategy_get_name() {
+        let strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        assert_eq!(strategy.get_name(), "Momentum");
+    }
+
+    #[test]
+    fn test_strategy_get_parameters() {
+        let strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let params = strategy.get_parameters();
+
+        assert_eq!(params.len(), 3);
+        assert!((params.get("surge_threshold").unwrap() - 0.05).abs() < 0.001);
+        assert!((params.get("volume_multiplier").unwrap() - 2.0).abs() < 0.001);
+        assert!((params.get("timeframe_minutes").unwrap() - 60.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_strategy_set_parameters_valid() {
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let mut params = std::collections::HashMap::new();
+        params.insert("surge_threshold".to_string(), 0.10);
+        params.insert("volume_multiplier".to_string(), 3.0);
+
+        let result = strategy.set_parameters(params);
+        assert!(result.is_ok());
+
+        let updated_params = strategy.get_parameters();
+        assert!((updated_params.get("surge_threshold").unwrap() - 0.10).abs() < 0.001);
+        assert!((updated_params.get("volume_multiplier").unwrap() - 3.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_strategy_set_parameters_invalid_threshold() {
+        // REQ-301: 파라미터 유효성 검증 (surge_threshold > 0)
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let mut params = std::collections::HashMap::new();
+        params.insert("surge_threshold".to_string(), -0.05); // Invalid: negative
+
+        let result = strategy.set_parameters(params);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be positive"));
+    }
+
+    #[test]
+    fn test_strategy_set_parameters_zero_threshold() {
+        // REQ-301: 파라미터 유효성 검증 (surge_threshold > 0)
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let mut params = std::collections::HashMap::new();
+        params.insert("surge_threshold".to_string(), 0.0); // Invalid: zero
+
+        let result = strategy.set_parameters(params);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_strategy_set_parameters_invalid_volume_multiplier() {
+        // REQ-301: 파라미터 유효성 검증 (volume_multiplier > 0)
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let mut params = std::collections::HashMap::new();
+        params.insert("volume_multiplier".to_string(), 0.0); // Invalid: zero
+
+        let result = strategy.set_parameters(params);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_strategy_set_parameters_invalid_timeframe() {
+        // REQ-301: 파라미터 유효성 검증 (timeframe_minutes > 0)
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let mut params = std::collections::HashMap::new();
+        params.insert("timeframe_minutes".to_string(), 0.0); // Invalid: zero
+
+        let result = strategy.set_parameters(params);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_strategy_reset() {
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let base_time = chrono::Utc::now().timestamp_millis();
+
+        // Add some data
+        strategy.add_tick(PriceTick::new(
+            "KRW-BTC".to_string(),
+            base_time,
+            50000.0,
+            0.0,
+            1.0,
+        ));
+
+        // Reset should clear history
+        strategy.reset();
+
+        // After reset, signal analysis should return None (no data)
+        let signal = strategy.analyze(&PriceTick::new(
+            "KRW-BTC".to_string(),
+            base_time + 1000,
+            51000.0,
+            0.02,
+            1.0,
+        ));
+
+        assert!(signal.is_none());
+    }
+
+    #[test]
+    fn test_strategy_on_candle() {
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let base_time = chrono::Utc::now().timestamp_millis();
+
+        // Create a candle (5% surge)
+        let candle1 = crate::types::Candle::new(
+            "KRW-BTC".to_string(),
+            chrono::DateTime::from_timestamp_millis(base_time - 3600000).unwrap(),
+            50000.0, // open
+            50500.0, // high
+            49500.0, // low
+            50000.0, // close
+            1.0,
+        );
+
+        let candle2 = crate::types::Candle::new(
+            "KRW-BTC".to_string(),
+            chrono::DateTime::from_timestamp_millis(base_time).unwrap(),
+            52500.0, // open
+            53000.0, // high
+            52000.0, // low
+            52500.0, // close (5% surge)
+            2.0,     // volume (2x)
+        );
+
+        // First candle - no signal yet
+        let signal1 = strategy.on_candle(&candle1);
+        assert!(signal1.is_none());
+
+        // Second candle - should generate signal
+        let signal2 = strategy.on_candle(&candle2);
+        assert!(signal2.is_some());
+        assert!(matches!(signal2.unwrap().signal_type, SignalType::Buy));
+    }
+
+    #[test]
+    fn test_strategy_dynamic_parameter_update() {
+        // REQ-305: WHEN strategy parameters change THEN validate and update
+        let mut strategy = MomentumStrategy::new(0.05, 2.0, 60);
+        let base_time = chrono::Utc::now().timestamp_millis();
+
+        // Add initial data
+        strategy.add_tick(PriceTick::new(
+            "KRW-BTC".to_string(),
+            base_time - 3600000,
+            50000.0,
+            0.0,
+            1.0,
+        ));
+
+        // Update parameters to be more sensitive
+        let mut params = std::collections::HashMap::new();
+        params.insert("surge_threshold".to_string(), 0.03); // Lower threshold
+        params.insert("volume_multiplier".to_string(), 1.5); // Lower volume requirement
+
+        assert!(strategy.set_parameters(params).is_ok());
+
+        // Test with lower surge (3% instead of 5%)
+        let signal = strategy.update_and_analyze(PriceTick::new(
+            "KRW-BTC".to_string(),
+            base_time,
+            51500.0, // 3% surge
+            0.03,
+            1.5,     // 1.5x volume
+        ));
+
+        // Should now generate signal with updated parameters
+        assert!(signal.is_some());
     }
 }

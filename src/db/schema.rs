@@ -102,3 +102,15 @@ pub struct OrderRow {
     pub executed_amount: f64,
     pub error: Option<String>,
 }
+
+/// 지표 캐시 DB 행
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct IndicatorCacheRow {
+    pub id: i64,
+    pub market: String,
+    pub indicator_type: String,
+    pub timestamp: i64,
+    pub value: f64,
+    pub metadata: Option<String>,
+    pub created_at: i64,
+}

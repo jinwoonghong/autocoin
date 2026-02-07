@@ -21,6 +21,8 @@ pub mod config;
 pub mod dashboard;
 pub mod error;
 pub mod execution;
+pub mod historical;
+pub mod indicators;
 pub mod types;
 
 // Private modules
@@ -32,5 +34,8 @@ mod strategy;
 
 // Re-exports for convenience
 pub use error::TradingError;
+pub use indicators::{Indicator, IndicatorCache, IndicatorValue};
+pub use strategy::{Strategy, StrategyFactory};
+pub use strategy::momentum::MomentumStrategy;
 pub use types::trading::*;
 
