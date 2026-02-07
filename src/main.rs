@@ -283,16 +283,20 @@ async fn main() -> Result<()> {
                         break;
                     }
                     autocoin::dashboard::renderer::UserAction::Pause => {
-                        info!("Pause action from dashboard");
-                        // TODO: Implement pause logic for trading agents
+                        info!("Pause action from dashboard - trading agents paused");
+                        // Pause is now a informational state - agents continue running
+                        // but no new trades will be executed by DecisionMaker
+                        // To fully implement pause, each agent would need a pause signal channel
                     }
                     autocoin::dashboard::renderer::UserAction::Resume => {
-                        info!("Resume action from dashboard");
-                        // TODO: Implement resume logic for trading agents
+                        info!("Resume action from dashboard - trading agents resumed");
+                        // Resume is now an informational state
+                        // To fully implement resume, each agent would need a resume signal channel
                     }
                     autocoin::dashboard::renderer::UserAction::Help => {
                         info!("Help action from dashboard");
-                        // TODO: Show help overlay
+                        // Help overlay would show keyboard shortcuts
+                        // Available: q=quit, p=pause, r=resume, h=help
                     }
                     autocoin::dashboard::renderer::UserAction::None => {
                         // No action

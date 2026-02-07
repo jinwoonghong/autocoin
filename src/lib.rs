@@ -25,6 +25,7 @@ pub mod execution;
 pub mod historical;
 pub mod indicators;
 pub mod types;
+pub mod web;
 
 // Private modules
 mod db;
