@@ -91,9 +91,8 @@ pub fn generate_task_scheduler_xml(config: &ServiceConfig) -> String {
 
     let working_dir = config.working_dir.display();
 
-    // TODO: Add log redirection if log_file is specified
     let log_redirect = if let Some(ref log_file) = config.log_file {
-        format!(" >> {}", log_file.display())
+        format!(">> {}", log_file.display())
     } else {
         String::new()
     };

@@ -119,8 +119,104 @@ Major dependencies added:
 - [ ] Paper trading mode (simulation)
 - [ ] Support for additional exchanges
 - [ ] Telegram notification support
-- [ ] Web-based monitoring dashboard
+- [ ] PWA support for mobile installation
+- [ ] Push notifications
 - [ ] Machine learning-based price prediction
+
+---
+
+## [0.3.0] - 2026-02-08
+
+### Added
+
+#### Web Dashboard (SPEC-TRADING-004)
+
+- **Next.js 16 Frontend**: React 19 + App Router 기반 웹 대시보드
+- **Axum Backend**: Rust 기반 REST API 및 WebSocket 서버
+- **Real-time Updates**: WebSocket 기반 실시간 가격/포지션/에이전트 상태 동기화
+- **Responsive Design**: 데스크톱/태블릿/모바일 반응형 레이아웃
+- **Dark Mode**: next-themes 기반 다크/라이트 테마 지원
+- **Interactive Charts**: Recharts 기반 PnL 차트 및 시장 데이터 시각화
+
+#### Pages
+
+- **Dashboard Page** (`/`): 포트폴리오 요약, 현재 포지션, 에이전트 상태 그리드, PnL 차트, 최근 활동
+- **Markets Page** (`/markets`): 상위 20개 코인 실시간 가격 모니터링, 필터링, 정렬
+- **Trades Page** (`/trades`): 거래 내역 조회, 필터링, 페이지네이션
+- **Backtest Page** (`/backtest`): 백테스팅 설정, 실행, 결과 시각화
+- **Settings Page** (`/settings`): 전략 파라미터, 리스크 관리, 시스템 제어
+
+#### Components
+
+- **Dashboard Components**: PortfolioSummary, PositionCard, AgentStatusGrid, PnLChart, RecentTrades, QuickStats
+- **Markets Components**: MarketTable, MarketFilters, PriceCell, MarketDetailModal
+- **Settings Components**: StrategySettings, RiskSettings, SystemControls, NotificationSettings, AboutSettings
+- **Layout Components**: Navigation, Header, Sidebar, ThemeToggle, ConnectionStatus
+- **UI Components**: Button, Card, Badge, Input, Select, Switch, Tabs, Dialog, Separator, Skeleton
+
+#### REST API
+
+- `GET /api/health`: 헬스 체크
+- `GET /api/status`: 시스템 상태 (업타임, WebSocket 연결 상태)
+- `GET /api/balance`: 계정 잔고 조회
+- `GET /api/position`: 현재 포지션 조회
+- `GET /api/trades`: 거래 내역 조회
+- `GET /api/markets`: 시장 데이터 조회
+- `GET /api/dashboard`: 대시보드 데이터 통합 조회
+- `GET /api/agents/status`: 에이전트 상태 조회
+- `POST /api/orders`: 수동 주문 생성
+- `DELETE /api/position`: 포지션 청산
+- `PUT /api/settings`: 설정 업데이트
+- `POST /api/trading/pause`: 트레이딩 일시정지
+- `POST /api/trading/resume`: 트레이딩 재개
+
+#### WebSocket Events
+
+- `price_update`: 실시간 가격 업데이트
+- `trade_executed`: 주문 체결 알림
+- `position_update`: 포지션 변경 알림
+- `agent_status`: 에이전트 상태 변경
+- `notification`: 시스템 알림
+
+#### Features
+
+- **SWR Integration**: 데이터 fetching 및 자동 재검증
+- **WebSocket Client**: 자동 재연결 및 이벤트 핸들링
+- **Korean Locale**: 한국 원화 형식화 및 날짜/시간 표시
+- **Error Handling**: 사용자 친화적 에러 메시지 및 에러 바운더리
+- **Loading States**: 스켈레톤 UI 및 로딩 스피너
+- **Type Safety**: TypeScript 타입 정의 (backend API 타입과 일치)
+
+#### Backend (Rust)
+
+- **Axum Server**: HTTP 서버 및 WebSocket 핸들러
+- **Shared State**: Arc<RwLock<TradingState>> 기반 상태 관리
+- **WebSocket Broadcaster**: broadcast::channel 기반 메시지 브로드캐스트
+- **CORS Support**: 개발/프로덕션 환경별 CORS 설정
+- **API Handlers**: JSON 직렬화/역직렬화 및 에러 처리
+
+#### Dependencies
+
+Frontend:
+- `next` 16.1.5 - React 프레임워크 (Turbopack 지원)
+- `react` 19.0.0 - UI 라이브러리
+- `recharts` 2.15.0 - 차트 라이브러리
+- `swr` 2.3.1 - 데이터 fetching
+- `lucide-react` 0.468.0 - 아이콘 라이브러리
+- `@radix-ui/*` - shadcn/ui 기본 컴포넌트
+- `tailwindcss` 3.4.17 - 유틸리티 스타일링
+- `next-themes` 0.4.6 - 테마 관리
+
+Backend:
+- `axum` 0.7+ - 웹 서버 프레임워크
+- `tokio-tungstenite` 0.24+ - WebSocket
+- `tower-http` 0.5+ - CORS, tracing 미들웨어
+
+### Documentation
+
+- Updated README.md with web dashboard information
+- Added SPEC-TRADING-004 with comprehensive web dashboard specification
+- Updated architecture diagram with web dashboard components
 
 ---
 
