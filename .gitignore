@@ -93,7 +93,6 @@ htmlcov/
 Thumbs.db
 ehthumbs.db
 nul
-*
 
 # Linux
 .directory

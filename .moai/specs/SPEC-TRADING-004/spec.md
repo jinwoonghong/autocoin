@@ -6,7 +6,7 @@
 SPEC-ID: SPEC-TRADING-004
 Title: Web-based Monitoring Dashboard for AutoCoin
 Created: 2026-02-07
-Status: Planned
+Status: Implemented
 Priority: High
 Assigned: TBD
 Lifecycle: spec-anchored
@@ -869,4 +869,46 @@ export const useTheme = () => useContext(ThemeContext);
 
 ---
 
-**Traceability**: `SPEC-ID: SPEC-TRADING-004` → Specification Phase Complete
+**Traceability**: `SPEC-ID: SPEC-TRADING-004` → Implementation Phase Complete
+
+## Implementation Summary
+
+### Completed Components
+
+#### Frontend (Next.js 16)
+- Dashboard page (`/app/dashboard/page.tsx`)
+- Markets page (`/app/markets/page.tsx`)
+- Trades page (`/app/trades/page.tsx`) ✅ NEW
+- Backtest page (`/app/backtest/page.tsx`) ✅ NEW
+- Settings page (`/app/settings/page.tsx`)
+
+#### Backend (Rust/Axum)
+- REST API handlers (`src/web/handlers.rs`)
+  - Dashboard aggregation endpoint ✅ NEW
+  - Backtest execution endpoint ✅ NEW
+  - Settings management endpoints ✅ NEW
+  - System control endpoints ✅ NEW
+  - Manual trading endpoints ✅ NEW
+- WebSocket handler (`src/web/websocket.rs`)
+- State management (`src/web/state.rs`)
+- Server implementation (`src/web/server.rs`)
+
+#### UI Components
+- Dashboard components: PortfolioSummary, PositionCard, AgentStatusGrid, PnLChart, RecentTrades
+- Markets components: MarketTable, MarketFilters, MarketDetailModal
+- Settings components: StrategySettings, RiskSettings, SystemControls, NotificationSettings
+- Layout components: Navigation, ThemeToggle
+- Base UI components: Button, Card, Badge, Input, Select, Switch, Tabs, Dialog
+
+### Integration Points
+- API client with WebSocket support (`web/lib/api-client.ts`)
+- Formatters for Korean locale (`web/lib/formatters.ts`)
+- Utility functions (`web/lib/utils.ts`)
+- Type definitions matching backend (`web/types/dashboard.ts`, `web/types/settings.ts`)
+
+### Next Steps
+1. Run `cd web && npm install` to install dependencies
+2. Run `cd web && npm run dev` to start the development server
+3. Run the Rust backend server to provide API endpoints
+4. Test WebSocket real-time updates
+5. Configure CORS for production deployment

@@ -42,6 +42,8 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Concurrency
 async-trait = "0.1"
+rand = "0.8"
+num_cpus = "1.16"
 
 # Discord Notification
 serde_urlencoded = "0.7"
@@ -62,6 +64,13 @@ crossterm = "0.28"
 
 # CLI Parsing
 clap = { version = "4.5", features = ["derive"] }
+
+# Web Server
+axum = "0.7"
+tower = "0.5"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [dev-dependencies]
 mockito = "1.5"
