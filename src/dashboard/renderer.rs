@@ -14,6 +14,7 @@ use ratatui::{
 use std::io::{self, Stdout};
 use tokio::sync::mpsc;
 use tracing::{error, info};
+use chrono::Utc;
 
 use super::{
     layout::{DashboardLayout, LayoutConfig},
@@ -52,15 +53,22 @@ pub struct DashboardRenderer {
 impl DashboardRenderer {
     /// Create new dashboard renderer
     pub fn new() -> Result<Self, io::Error> {
-        // Initialize terminal
+        // Initialize terminal - enable raw mode first
         enable_raw_mode()?;
+
+        // Setup alternate screen and mouse capture
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+
+        // Create backend and terminal
         let backend = CrosstermBackend::new(stdout);
-        let terminal = Terminal::new(backend)?;
+        let mut terminal = Terminal::new(backend)?;
+
+        // Clear the terminal and hide cursor for a clean start
+        terminal.clear()?;
 
         // Get initial terminal size
-        let size = terminal.size().unwrap_or_else(|_| ratatui::layout::Rect::new(0, 0, 120, 40));
+        let size = terminal.size().unwrap_or_else(|_| ratatui::layout::Size { width: 120, height: 40 });
 
         let layout = DashboardLayout::from_terminal_size(size.width, size.height);
 
@@ -69,6 +77,11 @@ impl DashboardRenderer {
             colors: ColorScheme::default(),
             layout,
         })
+    }
+
+    /// Clear the terminal screen
+    pub fn clear(&mut self) -> Result<(), io::Error> {
+        self.terminal.clear()
     }
 
     /// Render dashboard with data
@@ -87,7 +100,8 @@ impl DashboardRenderer {
             let size = frame.size();
 
             // Update layout if terminal size changed (REQ-109)
-            if size.width != self.layout.config.width || size.height != self.layout.config.height {
+            let config = self.layout.config();
+            if size.width != config.terminal_width || size.height != config.terminal_height {
                 self.layout = DashboardLayout::from_terminal_size(size.width, size.height);
             }
 
@@ -121,7 +135,7 @@ impl DashboardRenderer {
             widgets::render_market_panel(frame, panels.market, &data.market_prices, &self.colors);
 
             // Render notifications panel (only in normal mode)
-            if !self.layout.config.is_compact() && panels.notifications.height > 0 {
+            if !self.layout.config().is_compact() && panels.notifications.height > 0 {
                 widgets::render_notifications_panel(
                     frame,
                     panels.notifications,
@@ -147,45 +161,45 @@ impl DashboardRenderer {
         if let Err(e) = self.render(data) {
             error!("Dashboard render error (continuing without UI): {}", e);
             // Log the data that would have been displayed
-            log_dashboard_data(data);
+            Self::log_dashboard_data(data);
         }
     }
 
-/// Log dashboard data when UI rendering fails (fallback mode)
-fn log_dashboard_data(data: &DashboardData) {
-    info!("=== Dashboard Data (UI render failed, showing log view) ===");
-    info!("Timestamp: {}", data.timestamp.format("%Y-%m-%d %H:%M:%S"));
+    /// Log dashboard data when UI rendering fails (fallback mode)
+    fn log_dashboard_data(data: &DashboardData) {
+        info!("=== Dashboard Data (UI render failed, showing log view) ===");
+        info!("Timestamp: {}", data.timestamp.format("%Y-%m-%d %H:%M:%S"));
 
-    // Log agent states
-    for (name, state) in &data.agent_states {
-        info!("  Agent: {} - Status: {}", name, state.status.as_str());
-    }
+        // Log agent states
+        for (name, state) in &data.agent_states {
+            info!("  Agent: {} - Status: {}", name, state.status.as_str());
+        }
 
-    // Log position
-    if let Some(ref pos) = data.position {
+        // Log position
+        if let Some(ref pos) = data.position {
+            info!(
+                "  Position: {} @ {:.0}, PnL: {:.2}%",
+                pos.market, pos.current_price, pos.pnl_rate * 100.0
+            );
+        }
+
+        // Log balance
         info!(
-            "  Position: {} @ {:.0}, PnL: {:.2}%",
-            pos.market, pos.current_price, pos.pnl_rate * 100.0
+            "  Balance: {:.0} KRW available, {:.0} total",
+            data.balance.available_krw, data.balance.total_asset_value
         );
-    }
 
-    // Log balance
-    info!(
-        "  Balance: {:.0} KRW available, {:.0} total",
-        data.balance.available_krw, data.balance.total_asset_value
-    );
-
-    // Log recent notifications (last 5)
-    let recent_notifications: Vec<_> = data.notifications.iter().rev().take(5).collect();
-    if !recent_notifications.is_empty() {
-        info!("  Recent notifications:");
-        for notif in recent_notifications {
-            info!("    - {}", notif.format());
+        // Log recent notifications (last 5)
+        let recent_notifications: Vec<_> = data.notifications.iter().rev().take(5).collect();
+        if !recent_notifications.is_empty() {
+            info!("  Recent notifications:");
+            for notif in recent_notifications {
+                info!("    - {}", notif.format());
+            }
         }
-    }
 
-    info!("=== End Dashboard Data ===");
-}
+        info!("=== End Dashboard Data ===");
+    }
 
     /// Handle user input (non-blocking)
     pub fn handle_input(&mut self) -> Result<UserAction, io::Error> {
@@ -237,6 +251,40 @@ impl Drop for DashboardRenderer {
     }
 }
 
+/// Merge incoming dashboard update into accumulated state
+///
+/// This function accumulates state from multiple agents that send
+/// individual updates. Each update may contain only partial data.
+fn merge_dashboard_data(accumulated: &mut DashboardData, update: DashboardData) {
+    // Merge agent states
+    for (name, state) in update.agent_states {
+        accumulated.agent_states.insert(name, state);
+    }
+
+    // Update position (if provided)
+    if update.position.is_some() {
+        accumulated.position = update.position;
+    }
+
+    // Update balance (if provided)
+    if update.balance.total_asset_value > 0.0 || update.balance.krw_balance > 0.0 {
+        accumulated.balance = update.balance;
+    }
+
+    // Merge market prices
+    for price in update.market_prices {
+        accumulated.add_market_price(price);
+    }
+
+    // Merge notifications
+    for notification in update.notifications {
+        accumulated.add_notification(notification);
+    }
+
+    // Update timestamp
+    accumulated.timestamp = update.timestamp;
+}
+
 /// Run dashboard UI in a separate task
 pub async fn run_dashboard(
     mut data_rx: mpsc::Receiver<DashboardData>,
@@ -246,29 +294,43 @@ pub async fn run_dashboard(
 
     let mut renderer = DashboardRenderer::new()?;
 
+    // Accumulated dashboard state (merge incoming updates)
+    let mut accumulated_data = DashboardData::new();
+
     // Initial render with empty data
-    let initial_data = DashboardData::new();
-    renderer.render_or_log(&initial_data);
+    renderer.render_or_log(&accumulated_data);
 
     // Main UI loop with error recovery
     let mut consecutive_render_errors = 0;
     const MAX_RENDER_ERRORS: usize = 5;
+    let mut render_count = 0u64;
+    const RENDER_INTERVAL: u64 = 10; // Render every 10 iterations (500ms)
 
     loop {
         // Check for data updates
+        let mut data_updated = false;
         match data_rx.try_recv() {
-            Ok(data) => {
-                // Use render_or_log for graceful fallback (REQ-120)
-                renderer.render_or_log(&data);
-                consecutive_render_errors = 0; // Reset on success
+            Ok(update) => {
+                // Merge incoming update into accumulated state
+                merge_dashboard_data(&mut accumulated_data, update);
+                data_updated = true;
             }
             Err(mpsc::error::TryRecvError::Empty) => {
-                // No new data, continue
+                // No new data
             }
-            Err(mpsc::error::TryRecvError::Closed) => {
+            Err(mpsc::error::TryRecvError::Disconnected) => {
                 info!("Data channel closed, shutting down dashboard");
                 break;
             }
+        }
+
+        // Render periodically or when data is updated
+        render_count += 1;
+        if data_updated || render_count % RENDER_INTERVAL == 0 {
+            // Update timestamp for current time display
+            accumulated_data.timestamp = Utc::now();
+            renderer.render_or_log(&accumulated_data);
+            consecutive_render_errors = 0; // Reset on success
         }
 
         // Handle user input (with error handling)

@@ -14,7 +14,7 @@ use std::time::Duration;
 
 pub use client::UpbitClient;
 pub use models::*;
-pub use websocket::UpbitWebSocket;
+pub use websocket::{ReconnectingWebSocket, UpbitWebSocket};
 
 mod client;
 mod models;

@@ -81,7 +81,9 @@ cp .env.example .env
 
 ### 3. Environment Variables (환경 변수)
 
-`.env` 파일에 다음 설정을 추가하세요:
+**Environment Variables** (환경 변수를 사용하는 경우):
+
+`.env` 파일을 생성하고 다음 설정을 추가하세요. 환경 변수가 설정된 경우 `config.toml` 파일은 선택사항입니다:
 
 ```bash
 # Upbit API (필수)
@@ -90,7 +92,7 @@ UPBIT_SECRET_KEY=your_secret_key_here
 UPBIT_API_URL=https://api.upbit.com/v1
 UPBIT_WS_URL=wss://api.upbit.com/websocket/v1
 
-# Trading Parameters (트레이딩 파라미터)
+# Trading Parameters (선택 - config.toml 없이 환경 변수로만 설정 가능)
 TRADING_TARGET_COINS=20              # 상위 N개 코인 모니터링
 TARGET_PROFIT_RATE=0.10              # 목표 수익률 10%
 STOP_LOSS_RATE=0.05                  # 손절률 5%
@@ -111,6 +113,10 @@ DB_PATH=./data/trading.db
 STRATEGY_CONFIG=./config/strategy.toml
 ```
 
+**Configuration File** (`config.toml`을 사용하는 경우):
+
+환경 변수 대신 `config.toml` 파일에 API 키를 직접 설정할 수도 있습니다. 환경 변수와 `config.toml`이 모두 있는 경우 환경 변수가 우선 적용됩니다.
+
 ### 4. Build (빌드)
 
 ```bash
@@ -118,6 +124,24 @@ cargo build --release
 ```
 
 ## Configuration (설정)
+
+### Environment Variables vs Config File
+
+AutoCoin supports two configuration methods:
+
+1. **Environment Variables** (Recommended for security)
+   - Set via `.env` file or system environment
+   - Takes precedence over `config.toml` values
+   - `config.toml` becomes optional if environment variables are set
+
+2. **Config File** (`config.toml`)
+   - Traditional TOML configuration file
+   - Useful for default values and documentation
+   - Values are overridden by environment variables if both exist
+
+**Required** (one of the two methods):
+- `UPBIT_ACCESS_KEY`: Your Upbit API Access Key
+- `UPBIT_SECRET_KEY`: Your Upbit API Secret Key
 
 ### Strategy Config (전략 설정)
 
@@ -443,7 +467,8 @@ autocoin/
 
 | Issue | Solution |
 |-------|----------|
-| `UPBIT_ACCESS_KEY is required` | `.env` 파일에 API 키가 올바르게 설정되었는지 확인하세요 |
+| `UPBIT_ACCESS_KEY is required` | `.env` 파일에 API 키가 올바르게 설정되었는지 확인하세요 (또는 `config.toml` 사용) |
+| `Config file not found` | `config.toml`이 없어도 환경 변수(`UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`)로 설정할 수 있습니다 |
 | `Rate limit exceeded` | API 호출 빈도를 줄이거나 다시 실행하세요 |
 | WebSocket 연결 끊김 | 시스템이 자동으로 재연결을 시도합니다 |
 | 대시보드가 깨져서 보임 | 터미널 크기를 80x24 이상으로 조정하세요 |

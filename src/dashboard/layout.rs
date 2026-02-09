@@ -199,6 +199,11 @@ impl DashboardLayout {
 
         frame.render_widget(block, area);
     }
+
+    /// Get the layout config
+    pub fn config(&self) -> &LayoutConfig {
+        &self.config
+    }
 }
 
 /// Panel areas for the dashboard

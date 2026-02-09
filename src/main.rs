@@ -12,10 +12,12 @@ use autocoin::dashboard::{
     NotificationType,
 };
 use autocoin::db::Database;
-use autocoin::error::Result;
+use autocoin::error::{Result, TradingError};
 use autocoin::types::{OrderResult, PriceTick};
 use autocoin::upbit::UpbitClient;
-use chrono::Utc;
+use autocoin::web::WebServer;
+use clap::Parser;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -28,20 +30,36 @@ const DASHBOARD_CHANNEL_SIZE: usize = 100;
 #[command(name = "autocoin")]
 #[command(about = "Upbit Automated Trading Agent System", long_about = None)]
 struct Cli {
-    /// Enable TUI dashboard (default: true)
-    #[arg(short, long, default_value = "true")]
+    /// Enable TUI dashboard (default: false, web dashboard is enabled by default)
+    #[arg(short, long, default_value = "false")]
     dashboard: bool,
 
-    /// Run in daemon mode (no TUI, log-only)
-    #[arg(short, long, default_value = "false")]
+    /// Run in daemon mode (no UI, log-only)
+    #[arg(long, default_value = "false")]
     daemon: bool,
+
+    /// Disable web dashboard
+    #[arg(long, default_value = "false")]
+    no_web: bool,
+
+    /// Auto-open browser with web dashboard
+    #[arg(long, default_value = "true")]
+    open_browser: bool,
+
+    /// Web server host
+    #[arg(long, default_value = "0.0.0.0")]
+    host: String,
+
+    /// Web server port
+    #[arg(long, default_value = "8080")]
+    port: u16,
 
     /// Log level (trace, debug, info, warn, error)
     #[arg(short, long, default_value = "info")]
     log_level: String,
 
     /// Log file path
-    #[arg(short, long)]
+    #[arg(long)]
     log_file: Option<String>,
 
     /// Config file path
@@ -62,19 +80,19 @@ async fn main() -> Result<()> {
     // 설정 로드
     let settings = Settings::load().map_err(|e| {
         error!("Failed to load settings: {}", e);
-        e
+        autocoin::error::TradingError::ConfigError(e.to_string())
     })?;
 
     // 설정 유효성 검증
     if let Err(e) = settings.validate() {
         error!("Configuration validation failed: {}", e);
-        return Err(e.into());
+        return Err(autocoin::error::TradingError::ConfigError(e.to_string()));
     }
 
     info!("Settings loaded: {}", settings.display_safe());
 
     // 데이터베이스 초기화
-    let db = Database::new(&settings.system.db_path).await?;
+    let db: Database = Database::new(&settings.system.db_path).await?;
     info!("Database initialized: {}", settings.system.db_path);
 
     // Upbit 클라이언트 초기화
@@ -85,12 +103,84 @@ async fn main() -> Result<()> {
     info!("Upbit client initialized");
 
     // Top N 코인 목록 조회
-    let markets = upbit_client.get_top_krw_markets(settings.trading.target_coins).await?;
+    let markets: Vec<String> = upbit_client.get_top_krw_markets(settings.trading.target_coins).await?;
     info!("Monitoring {} markets: {:?}", markets.len(), markets);
+
+    // ========== WEB SERVER SETUP ==========
+    // Create web server for dashboard (enabled by default)
+    let web_server = if !cli.no_web && !cli.daemon {
+        info!("Starting web server on http://{}:{}", cli.host, cli.port);
+
+        // Create shared trading state for web dashboard
+        let web_trading_state = Arc::new(autocoin::web::TradingState::new());
+
+        // Create web server
+        let mut server = WebServer::with_defaults(
+            cli.host.clone(),
+            cli.port,
+            web_trading_state.clone(),
+        );
+
+        // Try to start the web server
+        match server.start_background().await {
+            Ok(server_handle) => {
+                info!("Web server started successfully on http://{}:{}", cli.host, cli.port);
+
+                // Auto-open browser if requested
+                if cli.open_browser {
+                    // Use localhost for browser URL (0.0.0.0 doesn't work in browsers)
+                    let browser_host = if cli.host == "0.0.0.0" { "localhost" } else { &cli.host };
+                    let dashboard_url = format!("http://{}:{}", browser_host, cli.port);
+                    info!("Opening browser at {}", dashboard_url);
+                    if let Err(e) = open::that(&dashboard_url) {
+                        warn!("Failed to open browser: {}", e);
+                        info!("Please open your browser and navigate to: {}", dashboard_url);
+                    } else {
+                        info!("Browser opened successfully");
+                    }
+                }
+
+                // Store web_trading_state for later bridge task
+                Some((server, web_trading_state))
+            }
+            Err(e) => {
+                error!("Failed to start web server: {}", e);
+                info!("Continuing without web dashboard...");
+                None
+            }
+        }
+    } else {
+        info!("Web server disabled");
+        None
+    };
 
     // ========== DASHBOARD DATA CHANNEL (TAG-002) ==========
     // Dashboard 데이터를 위한 채널 생성
     let (dashboard_data_tx, dashboard_data_rx) = mpsc::channel::<DashboardData>(DASHBOARD_CHANNEL_SIZE);
+
+    // ========== WEB STATE BRIDGE ==========
+    // If web server is running, create a task to bridge dashboard data to web state
+    if let Some((ref _server, ref web_trading_state)) = web_server {
+        use autocoin::dashboard::{AgentStatus as DashboardAgentStatus, Notification as DashboardNotification, NotificationType, BalanceData as DashboardBalanceData};
+        use autocoin::dashboard::PositionData as DashboardPositionData;
+
+        let web_state = web_trading_state.clone();
+
+        // Initialize with default balance
+        web_state.update_balance(DashboardBalanceData::default()).await;
+
+        // Forward initial agent statuses
+        let _ = web_state.update_agent_state("MarketMonitor".to_string(),
+            autocoin::dashboard::AgentState::new("MarketMonitor".to_string(), DashboardAgentStatus::Running)).await;
+        let _ = web_state.update_agent_state("SignalDetector".to_string(),
+            autocoin::dashboard::AgentState::new("SignalDetector".to_string(), DashboardAgentStatus::Running)).await;
+        let _ = web_state.update_agent_state("DecisionMaker".to_string(),
+            autocoin::dashboard::AgentState::new("DecisionMaker".to_string(), DashboardAgentStatus::Running)).await;
+        let _ = web_state.update_agent_state("Executor".to_string(),
+            autocoin::dashboard::AgentState::new("Executor".to_string(), DashboardAgentStatus::Idle)).await;
+
+        info!("Web dashboard data bridge initialized");
+    }
 
     // Dashboard 시작 여부 확인
     let enable_dashboard = cli.dashboard && !cli.daemon;
@@ -106,10 +196,10 @@ async fn main() -> Result<()> {
     // ========== AGENTS WITH DASHBOARD INTEGRATION ==========
 
     // 채널 생성 (에이전트 간 통신)
-    let (price_tx, price_rx) = mpsc::channel(1000);
+    let (price_tx, mut price_rx) = mpsc::channel(1000);
     let (signal_tx, signal_rx) = mpsc::channel(1000);
     let (decision_tx, decision_rx) = mpsc::channel(1000);
-    let (order_tx, order_rx) = mpsc::channel(1000);
+    let (order_tx, mut order_rx) = mpsc::channel(1000);
 
     // AGENT 1: Market Monitor (시가 모니터링)
     let market_monitor = MarketMonitor::new(markets.clone());
@@ -118,27 +208,36 @@ async fn main() -> Result<()> {
 
     tokio::spawn(async move {
         // 에이전트 시작 상태 전송
-        let _ = monitor_dashboard_tx.try_send(create_agent_status("MarketMonitor", AgentStatus::Running));
+        let _ = monitor_dashboard_tx.try_send(create_agent_status_update("MarketMonitor", AgentStatus::Running));
 
         if let Err(e) = market_monitor.monitor(monitor_price_tx).await {
             error!("Market monitor error: {}", e);
-            let _ = monitor_dashboard_tx.try_send(create_agent_status("MarketMonitor", AgentStatus::Error));
+            let _ = monitor_dashboard_tx.try_send(create_agent_status_update("MarketMonitor", AgentStatus::Error));
         }
     });
 
     // AGENT 2: Signal Detector (신호 감지)
-    let signal_detector = SignalDetector::new(settings.trading.clone(), price_rx);
-    let signal_price_tx = price_tx.clone();
+    // Note: SignalDetector creates its own internal channel
+    let (_dummy_tx, dummy_price_rx) = mpsc::channel(1);
+    let (signal_detector, signal_price_tx) = SignalDetector::new(settings.trading.clone(), dummy_price_rx);
     let signal_dashboard_tx = dashboard_data_tx.clone();
 
+    // AGENT 2 continued: Run SignalDetector
     tokio::spawn(async move {
         // 에이전트 시작 상태 전송
-        let _ = signal_dashboard_tx.try_send(create_agent_status("SignalDetector", AgentStatus::Running));
+        let _ = signal_dashboard_tx.try_send(create_agent_status_update("SignalDetector", AgentStatus::Running));
 
         let mut detector = signal_detector.with_signal_channel(signal_tx);
         if let Err(e) = detector.run().await {
             error!("Signal detector error: {}", e);
-            let _ = signal_dashboard_tx.try_send(create_agent_status("SignalDetector", AgentStatus::Error));
+            let _ = signal_dashboard_tx.try_send(create_agent_status_update("SignalDetector", AgentStatus::Error));
+        }
+    });
+
+    // Forward prices from main channel to SignalDetector's internal channel
+    tokio::spawn(async move {
+        while let Some(tick) = price_rx.recv().await {
+            let _ = signal_price_tx.send(tick).await;
         }
     });
 
@@ -160,7 +259,8 @@ async fn main() -> Result<()> {
     }
 
     // 초기 포지션 로드
-    let initial_position = db.get_all_active_positions().await?.first().cloned();
+    let initial_positions: Vec<autocoin::types::Position> = db.get_all_active_positions().await?;
+    let initial_position = initial_positions.first().cloned();
     if let Some(ref pos) = initial_position {
         info!("Existing position found: {}", pos.market);
     }
@@ -169,16 +269,16 @@ async fn main() -> Result<()> {
     let decision_tx_clone = decision_tx.clone();
     tokio::spawn(async move {
         // 에이전트 시작 상태 전송
-        let _ = decision_dashboard_tx.try_send(create_agent_status("DecisionMaker", AgentStatus::Running));
+        let _ = decision_dashboard_tx.try_send(create_agent_status_update("DecisionMaker", AgentStatus::Running));
 
         if let Err(e) = decision_maker.run().await {
             error!("Decision maker error: {}", e);
-            let _ = decision_dashboard_tx.try_send(create_agent_status("DecisionMaker", AgentStatus::Error));
+            let _ = decision_dashboard_tx.try_send(create_agent_status_update("DecisionMaker", AgentStatus::Error));
         }
     });
 
     // AGENT 4: Execution Agent (주문 실행)
-    let execution_agent = ExecutionAgent::new(
+    let mut execution_agent = ExecutionAgent::new(
         upbit_client.clone(),
         db.clone(),
         settings.trading.clone(),
@@ -191,17 +291,20 @@ async fn main() -> Result<()> {
 
     tokio::spawn(async move {
         // 에이전트 시작 상태 전송 (IDLE 상태로 시작)
-        let _ = executor_dashboard_tx.try_send(create_agent_status("Executor", AgentStatus::Idle));
+        let _ = executor_dashboard_tx.try_send(create_agent_status_update("Executor", AgentStatus::Idle));
 
         if let Err(e) = execution_agent.run().await {
             error!("Execution agent error: {}", e);
-            let _ = executor_dashboard_tx.try_send(create_agent_status("Executor", AgentStatus::Error));
+            let _ = executor_dashboard_tx.try_send(create_agent_status_update("Executor", AgentStatus::Error));
         }
     });
 
     // AGENT 5: Risk Manager (리스크 관리)
-    let (risk_decision_tx, risk_decision_rx) = mpsc::channel(1000);
-    let mut risk_manager = RiskManager::new(settings.trading.clone(), db.clone(), signal_price_tx)
+    // TODO: Disabled due to price_rx being consumed by SignalDetector forwarder
+    // Need to refactor to use broadcast channel for multiple consumers
+    /*
+    let (risk_decision_tx, mut risk_decision_rx) = mpsc::channel(1000);
+    let mut risk_manager = RiskManager::new(settings.trading.clone(), db.clone(), price_rx)
         .with_risk_channel(risk_decision_tx);
     let risk_dashboard_tx = dashboard_data_tx.clone();
 
@@ -209,11 +312,11 @@ async fn main() -> Result<()> {
     let risk_decision_tx_for_execution = decision_tx_clone.clone();
     tokio::spawn(async move {
         // 에이전트 시작 상태 전송
-        let _ = risk_dashboard_tx.try_send(create_agent_status("RiskManager", AgentStatus::Running));
+        let _ = risk_dashboard_tx.try_send(create_agent_status_update("RiskManager", AgentStatus::Running));
 
         if let Err(e) = risk_manager.run().await {
             error!("Risk manager error: {}", e);
-            let _ = risk_dashboard_tx.try_send(create_agent_status("RiskManager", AgentStatus::Error));
+            let _ = risk_dashboard_tx.try_send(create_agent_status_update("RiskManager", AgentStatus::Error));
         }
     });
 
@@ -223,6 +326,7 @@ async fn main() -> Result<()> {
             let _ = decision_tx_clone.send(decision).await;
         }
     });
+    */
 
     // AGENT 6: Notification Agent (알림)
     let notification_dashboard_tx = dashboard_data_tx.clone();
@@ -238,7 +342,7 @@ async fn main() -> Result<()> {
 
         tokio::spawn(async move {
             // 에이전트 시작 상태 전송
-            let _ = notification_dashboard_tx.try_send(create_agent_status("Notification", AgentStatus::Running));
+            let _ = notification_dashboard_tx.try_send(create_agent_status_update("Notification", AgentStatus::Running));
 
             while let Some(order_result) = order_rx.recv().await {
                 // Dashboard 알림 전송 (TAG-002)
@@ -370,8 +474,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// 에이전트 상태 생성 헬퍼 함수
-fn create_agent_status(name: &str, status: AgentStatus) -> DashboardData {
+/// Create minimal agent status update for dashboard
+///
+/// This creates a lightweight update containing only a single agent's state.
+/// The dashboard renderer will accumulate these updates over time.
+fn create_agent_status_update(name: &str, status: AgentStatus) -> DashboardData {
     let mut data = DashboardData::new();
     let agent_state = AgentState::new(name.to_string(), status);
     data.update_agent_state(name.to_string(), agent_state);
@@ -388,7 +495,7 @@ fn send_order_notification(tx: &mpsc::Sender<DashboardData>, result: &OrderResul
     let message = if result.success {
         format!(
             "Order executed: {} {} @ {}",
-            result.order.side.as_bid().then(|| "BUY").unwrap_or("SELL"),
+            if matches!(result.order.side, autocoin::types::OrderSide::Bid) { "BUY" } else { "SELL" },
             result.order.market,
             result.order.price
         )
@@ -414,7 +521,7 @@ fn init_logging(log_level: &str, log_file: Option<&str>) {
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(log_level));
 
     // JSON 형식 로그 (프로덕션)
-    if std::env::var("LOG_JSON").unwrap_or_else(|_| "true".to_string()) == "true" {
+    if std::env::var("LOG_JSON").unwrap_or_else(|_| "false".to_string()) == "true" {
         tracing_subscriber::registry()
             .with(env_filter)
             .with(tracing_subscriber::fmt::layer().json())

@@ -457,7 +457,7 @@ impl BacktestSimulator {
 
         let initial_equity = equity_curve.first().unwrap().equity;
         let mut peak = initial_equity;
-        let mut max_drawdown = 0.0;
+        let mut max_drawdown: f64 = 0.0;
 
         // Drawdown 계산
         for point in equity_curve {

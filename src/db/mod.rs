@@ -428,14 +428,14 @@ impl Database {
 
     /// 시스템 상태 조회
     pub async fn get_state(&self, key: &str) -> Result<Option<String>> {
-        let row = sqlx::query_as::<_(sqlx::types::JsonValue)>(
+        let row: Option<(String,)> = sqlx::query_as(
             "SELECT value FROM system_state WHERE key = ?",
         )
         .bind(key)
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|v| v.to_string()))
+        Ok(row.map(|(v,)| v))
     }
 
     /// 오래된 시세 데이터 정리 (N일 이전)

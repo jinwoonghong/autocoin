@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::types::PriceTick;
 use crate::upbit::ReconnectingWebSocket;
 use tokio::sync::mpsc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 /// Market Monitor Agent
 ///
@@ -15,22 +15,37 @@ use tracing::{info, warn};
 /// 출력: PriceTick 스트림
 pub struct MarketMonitor {
     ws: ReconnectingWebSocket,
+    markets: Vec<String>,
 }
 
 impl MarketMonitor {
     /// 새로운 Market Monitor 생성
     pub fn new(markets: Vec<String>) -> Self {
+        let markets_clone = markets.clone();
         let ws = ReconnectingWebSocket::new(markets);
-        Self { ws }
+        Self { ws, markets: markets_clone }
     }
 
     /// Top N 코인 모니터링 시작
     ///
     /// `markets`: 모니터링할 마켓 목록
     /// `tx`: 가격 틱을 전송할 채널
-    pub async fn monitor(&self, tx: mpsc::Sender<PriceTick>) -> Result<()> {
-        info!("Starting market monitor");
-        self.ws.run(tx).await
+    pub async fn monitor(self, tx: mpsc::Sender<PriceTick>) -> Result<()> {
+        info!("Starting market monitor for {} markets", self.markets.len());
+
+        // 마켓 목록 출력
+        info!("Monitoring markets: {:?}", self.markets);
+
+        match self.ws.run(tx).await {
+            Ok(_) => {
+                info!("Market monitor completed successfully");
+                Ok(())
+            }
+            Err(e) => {
+                error!("Market monitor failed: {}", e);
+                Err(e)
+            }
+        }
     }
 
     /// 독립 실행용 스폰 함수

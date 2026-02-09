@@ -333,7 +333,7 @@ pub fn mask_api_key(key: &str) -> String {
 /// Checks environment variables and terminal capabilities.
 pub fn supports_color() -> bool {
     // Check CLICOLOR environment variable (macOS/BSD convention)
-    if let Ok clicolor) = std::env::var("CLICOLOR") {
+    if let Ok(clicolor) = std::env::var("CLICOLOR") {
         if clicolor != "0" && !clicolor.is_empty() {
             return true;
         }

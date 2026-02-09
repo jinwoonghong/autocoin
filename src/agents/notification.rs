@@ -102,7 +102,7 @@ impl NotificationAgent {
                 },
                 EmbedField {
                     name: "가격".to_string(),
-                    value: format!("{:,.0} KRW", price),
+                    value: format!("{:.0} KRW", price),
                     inline: true,
                 },
                 EmbedField {
@@ -112,7 +112,7 @@ impl NotificationAgent {
                 },
                 EmbedField {
                     name: "금액".to_string(),
-                    value: format!("{:,.0} KRW", price * amount),
+                    value: format!("{:.0} KRW", price * amount),
                     inline: true,
                 },
                 EmbedField {
@@ -158,7 +158,7 @@ impl NotificationAgent {
                 },
                 EmbedField {
                     name: "가격".to_string(),
-                    value: format!("{:,.0} KRW", price),
+                    value: format!("{:.0} KRW", price),
                     inline: true,
                 },
                 EmbedField {
@@ -168,7 +168,7 @@ impl NotificationAgent {
                 },
                 EmbedField {
                     name: "총 수익/손실".to_string(),
-                    value: format!("{:,.0} KRW ({:+.2}%)", profit, profit_rate * 100.0),
+                    value: format!("{:.0} KRW ({:+.2}%)", profit, profit_rate * 100.0),
                     inline: false,
                 },
             ],
@@ -307,7 +307,7 @@ impl NotificationAgent {
     /// 독립 실행용 스폰 함수
     pub async fn spawn(
         webhook_url: String,
-        order_rx: mpsc::Receiver<OrderResult>,
+        mut order_rx: mpsc::Receiver<OrderResult>,
     ) -> Result<()> {
         let agent = Self::new(webhook_url, true, true, false, true);
 

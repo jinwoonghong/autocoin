@@ -1,5 +1,6 @@
 //! Upbit API response models
 
+use crate::types::{OrderSide, OrderStatus};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

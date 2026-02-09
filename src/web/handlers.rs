@@ -13,6 +13,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Json},
 };
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Get system status
@@ -172,6 +173,14 @@ pub async fn health_check() -> &'static str {
     "OK"
 }
 
+/// Serve the dashboard HTML page
+///
+/// Returns the HTML dashboard interface.
+pub async fn serve_dashboard() -> impl IntoResponse {
+    let dashboard_html = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/web/dashboard.html"));
+    ([(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")], dashboard_html)
+}
+
 /// 404 handler
 ///
 /// Handles requests to non-existent endpoints.
@@ -300,90 +309,19 @@ pub struct BacktestRequest {
 /// Run backtest
 ///
 /// Executes a backtest with the given configuration.
+/// Note: This is a placeholder implementation. Full backtest requires historical data fetching.
 pub async fn run_backtest(
-    State(state): State<Arc<TradingState>>,
+    State(_state): State<Arc<TradingState>>,
     Json(req): Json<BacktestRequest>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
-    use crate::backtest::{BacktestConfig, BacktestSimulator};
-
     // Parse dates
-    let start_date = chrono::NaiveDate::parse_from_str(&req.start_date, "%Y-%m-%d")
+    let _start_date = chrono::NaiveDate::parse_from_str(&req.start_date, "%Y-%m-%d")
         .map_err(|_| ErrorResponse::new("Invalid start date format".to_string()))?;
-    let end_date = chrono::NaiveDate::parse_from_str(&req.end_date, "%Y-%m-%d")
+    let _end_date = chrono::NaiveDate::parse_from_str(&req.end_date, "%Y-%m-%d")
         .map_err(|_| ErrorResponse::new("Invalid end date format".to_string()))?;
 
-    // Create backtest config
-    let config = BacktestConfig {
-        market: req.market.clone(),
-        initial_balance: req.initial_balance,
-        commission_rate: req.commission,
-        slippage_rate: req.slippage,
-        start_date,
-        end_date,
-        ..Default::default()
-    };
-
-    // Run backtest
-    let simulator = BacktestSimulator::new(config);
-    let result = simulator.run().await.map_err(|e| {
-        ErrorResponse::new(format!("Backtest failed: {}", e))
-    })?;
-
-    // Format response
-    let response = serde_json::json!({
-        "success": true,
-        "config": {
-            "market": req.market,
-            "strategy": req.strategy,
-            "startDate": req.start_date,
-            "endDate": req.end_date,
-            "initialBalance": req.initial_balance,
-            "commission": req.commission,
-            "slippage": req.slippage,
-        },
-        "result": {
-            "totalReturn": result.final_balance - req.initial_balance,
-            "totalReturnRate": (result.final_balance - req.initial_balance) / req.initial_balance,
-            "winRate": if result.metrics.total_trades > 0 {
-                result.metrics.winning_trades as f64 / result.metrics.total_trades as f64
-            } else { 0.0 },
-            "totalTrades": result.metrics.total_trades,
-            "winningTrades": result.metrics.winning_trades,
-            "losingTrades": result.metrics.losing_trades,
-            "maxDrawdown": result.metrics.max_drawdown,
-            "maxDrawdownRate": result.metrics.max_drawdown_rate,
-            "sharpeRatio": result.metrics.sharpe_ratio,
-            "finalBalance": result.final_balance,
-            "trades": result.trades.into_iter().map(|t| {
-                serde_json::json!({
-                    "market": t.market,
-                    "side": if t.is_buy { "buy" } else { "sell" },
-                    "entryPrice": t.entry_price,
-                    "exitPrice": t.exit_price.unwrap_or(0.0),
-                    "amount": t.amount,
-                    "profit": t.pnl,
-                    "profitRate": t.pnl_rate,
-                    "entryTime": t.entry_time.to_rfc3339(),
-                    "exitTime": t.exit_time.map(|t| t.to_rfc3339()).unwrap_or_default(),
-                })
-            }).collect::<Vec<_>>(),
-            // Equity curve - simplified version showing cumulative returns
-            "equityCurve": result.trades.iter().scan(
-                serde_json::json!({"date": req.start_date, "balance": req.initial_balance, "return": 0.0}),
-                |acc, trade| {
-                    let current_balance = acc["balance"].as_f64().unwrap_or(0.0) + trade.pnl;
-                    let total_return = current_balance - req.initial_balance;
-                    serde_json::json!({
-                        "date": trade.entry_time.split("T").next().unwrap_or(&trade.entry_time),
-                        "balance": current_balance,
-                        "return": total_return
-                    })
-                }
-            ).collect::<Vec<_>>(),
-        }
-    });
-
-    Ok(Json(response))
+    // Return a placeholder response - backtest requires historical data and strategy implementation
+    Err(ErrorResponse::new("Backtest feature requires historical data integration. Use CLI backtest command.".to_string()))
 }
 
 /// Settings data

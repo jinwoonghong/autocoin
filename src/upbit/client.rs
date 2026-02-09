@@ -3,23 +3,26 @@
 use super::models::*;
 use super::{generate_jwt_token, generate_signature, build_query_string, UPBIT_API_URL};
 use crate::error::{Result, TradingError, UpbitError};
-use crate::types::{Balance, Candle, Order, OrderSide};
+use crate::types::{Balance, Candle, Order, OrderSide, PriceTick};
 use chrono::{DateTime, Duration, Utc};
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::{Client, Response, StatusCode};
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration as StdDuration;
 use tokio::time::sleep;
+use std::sync::Arc;
+use tokio::sync::Mutex as TokioMutex;
 use tracing::{debug, warn};
 
 /// Upbit REST API 클라이언트
+#[derive(Clone)]
 pub struct UpbitClient {
     client: Client,
     access_key: String,
     secret_key: String,
     base_url: String,
-    rate_limit: RateLimiter,
+    rate_limit: Arc<TokioMutex<RateLimiter>>,
 }
 
 impl UpbitClient {
@@ -35,7 +38,7 @@ impl UpbitClient {
             access_key,
             secret_key,
             base_url: UPBIT_API_URL.to_string(),
-            rate_limit: RateLimiter::new(10, 1.0), // 10 requests per second
+            rate_limit: Arc::new(TokioMutex::new(RateLimiter::new(10, 1.0))), // 10 requests per second
         }
     }
 
@@ -77,7 +80,7 @@ impl UpbitClient {
         let full_path = format!("{}{}", path, query);
         let headers = self.auth_headers("GET", &full_path, None);
 
-        self.rate_limit.acquire().await;
+        self.rate_limit.lock().await.acquire().await;
 
         let response = self
             .client
@@ -98,7 +101,7 @@ impl UpbitClient {
         let body_json = serde_json::to_string(body)?;
         let headers = self.auth_headers("POST", path, Some(&body_json));
 
-        self.rate_limit.acquire().await;
+        self.rate_limit.lock().await.acquire().await;
 
         let response = self
             .client
@@ -114,7 +117,7 @@ impl UpbitClient {
     /// 응답 처리
     async fn handle_response<T: DeserializeOwned>(
         &self,
-        response: Result<Response, reqwest::Error>,
+        response: std::result::Result<Response, reqwest::Error>,
     ) -> Result<T> {
         let mut resp = response.map_err(|e| UpbitError::RequestFailed(e.to_string()))?;
 
@@ -130,8 +133,8 @@ impl UpbitClient {
             }
 
             // 에러 응답 파싱
-            if let Ok(error) = serde_json::from_value::<ApiErrorResponse>(serde_json::from_str(&response_text).unwrap_or_default()) {
-                return Err(UpbitError::from_api_error(&status.as_str().split(' ').next().unwrap_or(""), &error.name).into());
+            if let Ok(error) = serde_json::from_str::<ApiErrorResponse>(&response_text) {
+                return Err(UpbitError::from_api_error(&status.as_u16().to_string(), &error.name).into());
             }
 
             return Err(UpbitError::ApiError {

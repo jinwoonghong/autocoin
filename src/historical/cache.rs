@@ -248,7 +248,7 @@ impl HistoricalCache {
 }
 
 /// 캔들 데이터베이스 행
-#[derive(Debug)]
+#[derive(Debug, sqlx::FromRow)]
 struct CandleRow {
     timestamp: i64,
     open_price: f64,

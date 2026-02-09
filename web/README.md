@@ -1,257 +1,163 @@
 # AutoCoin Web Dashboard
 
-Modern web dashboard for the AutoCoin Upbit automated trading system.
+A modern, real-time web-based dashboard for monitoring your AutoCoin trading bot.
 
-## Tech Stack
+## Features
 
-- **Framework**: Next.js 16 with App Router
-- **React Version**: 19.0
-- **Language**: TypeScript 5.7
-- **Styling**: Tailwind CSS 3.4
-- **Components**: Custom shadcn/ui-style components
-- **Charts**: Recharts 2.15
-- **Data Fetching**: SWR 2.3
-- **Icons**: Lucide React
+- **Dark Theme**: Trading-appropriate dark interface
+- **Real-time Updates**: WebSocket connection for live data
+- **Agent Status**: Monitor all trading agents in real-time
+- **Market Prices**: Track price changes for monitored markets
+- **Balance & Position**: View current balance and open positions
+- **Notifications**: Live feed of trading signals and events
+- **Responsive Design**: Works on desktop and mobile devices
 
-## Project Structure
+## Accessing the Dashboard
 
-```
-web/
-├── app/                      # Next.js App Router
-│   ├── dashboard/           # Dashboard page
-│   │   └── page.tsx         # Main dashboard component
-│   ├── globals.css          # Global styles with CSS variables
-│   ├── layout.tsx           # Root layout
-│   └── page.tsx             # Home page
-├── components/
-│   ├── dashboard/           # Dashboard-specific components
-│   │   ├── PortfolioSummary.tsx    # Portfolio overview card
-│   │   ├── PositionCard.tsx         # Active position display
-│   │   ├── AgentStatusGrid.tsx      # 6-agent status grid
-│   │   ├── PnLChart.tsx             # 7-day PnL chart
-│   │   ├── RecentTrades.tsx         # Recent trades table
-│   │   └── QuickStats.tsx           # Quick statistics cards
-│   └── ui/                   # Base UI components
-│       ├── badge.tsx         # Badge component
-│       ├── button.tsx        # Button component
-│       ├── card.tsx          # Card components
-│       ├── icons.tsx         # Icon exports
-│       ├── separator.tsx     # Separator component
-│       ├── skeleton.tsx      # Loading skeleton
-│       └── table.tsx         # Table components
-├── lib/
-│   ├── api-client.ts         # API client with WebSocket
-│   └── utils.ts             # Utility functions
-├── types/
-│   └── dashboard.ts         # TypeScript type definitions
-└── package.json
-```
+### Starting the Web Server
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ or 20+
-- npm or yarn
-- AutoCoin Rust backend running on port 3000
-
-### Installation
+By default, the web server starts automatically when you run `autocoin`:
 
 ```bash
-cd web
-npm install
+autocoin
 ```
 
-### Configuration
+The dashboard will be available at `http://127.0.0.1:8080` and your browser should open automatically.
 
-Create a `.env.local` file:
+### Command Line Options
 
 ```bash
-cp .env.example .env.local
+# Start web server on custom host/port
+autocoin --host 0.0.0.0 --port 3000
+
+# Disable browser auto-open
+autocoin --no-open-browser
+
+# Disable web server entirely (use TUI instead)
+autocoin --dashboard --no-web
+
+# Daemon mode (no UI)
+autocoin --daemon
 ```
 
-Update the API URL if your backend runs on a different port:
+### Full CLI Options
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
-NEXT_PUBLIC_WS_URL=ws://localhost:3000/ws
-```
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host` | 127.0.0.1 | Web server host address |
+| `--port` | 8080 | Web server port |
+| `--no-web` | false | Disable web server |
+| `--no-open-browser` | false | Don't auto-open browser |
+| `--dashboard` | false | Enable TUI dashboard instead |
+| `--daemon` | false | Run in daemon mode (no UI) |
 
-### Development
+## Dashboard Sections
 
-```bash
-npm run dev
-```
-
-Open [http://localhost:3001](http://localhost:3001) in your browser.
-
-### Build
-
-```bash
-npm run build
-npm start
-```
-
-## Components
-
-### Dashboard Components
-
-#### PortfolioSummary
-
-Displays portfolio overview:
-- Total asset value
-- Available KRW balance
-- Crypto asset value
-- Asset allocation visualization
-
-```tsx
-<PortfolioSummary balance={balanceData} position={positionData} />
-```
-
-#### PositionCard
-
-Shows active trading position:
-- Market and current price
-- Entry price
-- Unrealized PnL (value and percentage)
-- Stop loss and take profit levels
-- Distance to exit points
-
-```tsx
-<PositionCard position={position} currentPrice={currentPrice} />
-```
-
-#### AgentStatusGrid
-
-2x3 grid showing 6 agent statuses:
-- Market Monitor
-- Signal Detector
-- Decision Maker
-- Execution Agent
-- Risk Manager
-- Notification Agent
-
-```tsx
-<AgentStatusGrid agents={agentStates} />
-```
-
-#### PnLChart
-
-7-day PnL history line chart:
-- Daily PnL percentage
-- Visual trend indicator
-- Best/worst day stats
-- Responsive design
-
-```tsx
-<PnLChart data={pnlHistoryData} />
-```
-
-#### RecentTrades
-
-Table showing last 10 trades:
-- Timestamp
-- Market
-- Side (Buy/Sell)
-- Price
-- Profit (for sells)
-
-```tsx
-<RecentTrades trades={tradesData} maxTrades={10} />
-```
-
-#### QuickStats
-
-Four statistical cards:
-- Win rate with W/L record
-- Total trades count
+### Balance Card
+- Total asset value (KRW)
+- Available balance
 - Today's PnL
-- Total PnL
 
-```tsx
-<QuickStats stats={statsData} />
+### Position Card
+- Current market
+- Entry and current prices
+- Unrealized PnL (amount and percentage)
+
+### Agents Card
+- Status of all trading agents
+- Real-time state updates
+- Connection status indicators
+
+### Market Prices
+- Live price updates via WebSocket
+- 24-hour change percentage
+- Trading volume
+
+### Notifications
+- Trading signals
+- Order execution confirmations
+- Error messages and warnings
+- Time-stamped events
+
+## WebSocket API
+
+The dashboard uses WebSocket for real-time updates. Connect to:
+
+```
+ws://127.0.0.1:8080/ws
 ```
 
-## API Integration
+### Message Types
 
-### REST API Endpoints
+- `priceUpdate`: Market price changes
+- `positionUpdate`: Position changes
+- `agentStatus`: Agent state changes
+- `balanceUpdate`: Balance changes
+- `notification`: New notifications
+- `systemStatus`: System status updates
 
-The dashboard expects the following endpoints from the Rust backend:
+## HTTP API
 
-- `GET /api/dashboard` - Complete dashboard data
+### Dashboard Data
+```
+GET /api/dashboard
+```
+
+Returns all dashboard data in a single response.
+
+### Individual Endpoints
+- `GET /api/status` - System status
 - `GET /api/balance` - Balance information
 - `GET /api/position` - Current position
-- `GET /api/agents` - Agent statuses
-- `GET /api/trades?limit=10` - Recent trades
-- `GET /api/pnl?days=7` - PnL history
-- `GET /api/stats` - Trading statistics
+- `GET /api/markets` - Market prices
+- `GET /api/agents` - Agent states
+- `GET /api/notifications` - Recent notifications
+- `GET /api/trades` - Trade history
 
-### WebSocket
+## Development
 
-Real-time updates via WebSocket:
+### File Structure
+```
+web/
+├── dashboard.html    # Main dashboard HTML (served by Rust backend)
+└── README.md         # This file
 
-```typescript
-// Message format
-{
-  type: "price_update" | "position_update" | "agent_status" | "trade_executed",
-  data: unknown,
-  timestamp: number
-}
+src/web/
+├── handlers.rs       # HTTP request handlers
+├── routes.rs         # Route configuration
+├── server.rs         # Web server implementation
+├── state.rs          # Shared state management
+└── websocket.rs      # WebSocket handler
 ```
 
-## Styling
+### Adding New Features
 
-### Theme
+1. Add the data structure to `state.rs`
+2. Create an API handler in `handlers.rs`
+3. Register the route in `routes.rs`
+4. Update the WebSocket message types if needed
+5. Update the dashboard HTML to display the new data
 
-The dashboard uses CSS variables for theming:
+## Troubleshooting
 
-```css
-:root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --primary: 240 5.9% 10%;
-  /* ... more variables */
-}
+### WebSocket Not Connecting
+- Check if the web server is running
+- Verify the port is not blocked by firewall
+- Check browser console for errors
 
-.dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  /* ... more variables */
-}
-```
+### Data Not Updating
+- Ensure trading agents are running
+- Check the browser's WebSocket connection status
+- View server logs for errors
 
-### Color Coding
+### Cannot Access Dashboard
+- Verify `--no-web` flag is not set
+- Check the host and port settings
+- Ensure the server started successfully
 
-- **Green**: Positive PnL, buy trades, running agents
-- **Red**: Negative PnL, sell trades, errors
-- **Yellow/Orange**: Warnings, pending status
+## Security
 
-## Performance
-
-### Code Splitting
-
-Components are automatically code-split by Next.js App Router.
-
-### SWR Caching
-
-Dashboard data is cached with 5-second refresh interval:
-- Automatic revalidation on focus
-- Reconnection handling
-- Optimistic UI updates
-
-### Responsive Design
-
-- Mobile: Stacked layout
-- Tablet: 2-column grid
-- Desktop: Multi-column grid layout
-
-## Browser Support
-
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-## License
-
-MIT
+- The dashboard binds to `127.0.0.1` by default (localhost only)
+- To access from other devices, use `--host 0.0.0.0`
+- Consider adding authentication for production deployments
+- Use HTTPS in production environments

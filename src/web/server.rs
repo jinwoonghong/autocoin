@@ -4,11 +4,11 @@
 
 use super::routes::{create_router, create_router_with_static};
 use super::state::TradingState;
-use super::websocket::WebSocketBroadcaster;
 use super::{MarketPrice, PositionData, TradeRecord, WebSocketMessage};
 use crate::dashboard::{AgentState as DashboardAgentState, BalanceData, Notification};
 use crate::types::trading::PriceTick;
 use anyhow::Result;
+use chrono::Utc;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -32,7 +32,7 @@ pub struct WebServerConfig {
 impl Default for WebServerConfig {
     fn default() -> Self {
         Self {
-            host: "127.0.0.1".to_string(),
+            host: "0.0.0.0".to_string(),
             port: 8080,
             static_dir: None,
             enable_cors: true,
@@ -48,8 +48,6 @@ pub struct WebServer {
     config: WebServerConfig,
     /// Shared trading state
     trading_state: Arc<TradingState>,
-    /// WebSocket broadcaster
-    broadcaster: Arc<WebSocketBroadcaster>,
     /// Shutdown sender
     shutdown_tx: Option<oneshot::Sender<()>>,
     /// Server start time
@@ -67,7 +65,6 @@ impl WebServer {
         Self {
             config,
             trading_state,
-            broadcaster: Arc::new(WebSocketBroadcaster::new()),
             shutdown_tx: None,
             start_time: None,
         }
@@ -171,10 +168,6 @@ impl WebServer {
             .update_system_status("running".to_string())
             .await;
 
-        // Clone broadcaster for the server task
-        let broadcaster = self.broadcaster.clone();
-        let trading_state = self.trading_state.clone();
-
         // Spawn server task
         let handle = tokio::spawn(async move {
             let server = axum::serve(listener, router)
@@ -197,7 +190,7 @@ impl WebServer {
         if let Some(shutdown_tx) = self.shutdown_tx.take() {
             shutdown_tx
                 .send(())
-                .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {e:?}"))?;
 
             // Update system status
             self.trading_state
@@ -220,9 +213,9 @@ impl WebServer {
         self.trading_state.clone()
     }
 
-    /// Get WebSocket broadcaster
-    pub fn broadcaster(&self) -> Arc<WebSocketBroadcaster> {
-        self.broadcaster.clone()
+    /// Broadcast a WebSocket message
+    fn broadcast(&self, msg: WebSocketMessage) {
+        self.trading_state.broadcast(msg);
     }
 
     /// Update position and broadcast
@@ -230,23 +223,25 @@ impl WebServer {
         self.trading_state.update_position(position.clone()).await;
 
         if let Some(ref pos) = position {
-            self.broadcaster.broadcast_position(
-                pos.market.clone(),
-                pos.entry_price,
-                pos.current_price,
-                pos.pnl_rate,
-            );
+            self.broadcast(WebSocketMessage::PositionUpdate {
+                market: pos.market.clone(),
+                entry_price: pos.entry_price,
+                current_price: pos.current_price,
+                pnl_rate: pos.pnl_rate,
+                timestamp: Utc::now(),
+            });
         }
     }
 
     /// Update balance and broadcast
     pub async fn update_balance(&self, balance: BalanceData) {
         self.trading_state.update_balance(balance.clone()).await;
-        self.broadcaster.broadcast_balance(
-            balance.krw_balance,
-            balance.available_krw,
-            balance.total_asset_value,
-        );
+        self.broadcast(WebSocketMessage::BalanceUpdate {
+            krw_balance: balance.krw_balance,
+            available_krw: balance.available_krw,
+            total_asset_value: balance.total_asset_value,
+            timestamp: Utc::now(),
+        });
     }
 
     /// Update agent state and broadcast
@@ -254,11 +249,12 @@ impl WebServer {
         self.trading_state
             .update_agent_state(name.clone(), state.clone())
             .await;
-        self.broadcaster.broadcast_agent_status(
-            name,
-            state.status.as_str().to_string(),
-            state.message,
-        );
+        self.broadcast(WebSocketMessage::AgentStatus {
+            agent: name,
+            status: state.status.as_str().to_string(),
+            message: state.message,
+            timestamp: Utc::now(),
+        });
     }
 
     /// Update market price and broadcast
@@ -266,18 +262,23 @@ impl WebServer {
         self.trading_state
             .update_market_price(price.clone())
             .await;
-        self.broadcaster
-            .broadcast_price(price.market, price.price, price.change_rate);
+        self.broadcast(WebSocketMessage::PriceUpdate {
+            market: price.market,
+            price: price.price,
+            change_rate: price.change_rate,
+            timestamp: Utc::now(),
+        });
     }
 
     /// Update price from tick and broadcast
     pub async fn update_price_tick(&self, tick: &PriceTick) {
         self.trading_state.update_price_tick(tick).await;
-        self.broadcaster.broadcast_price(
-            tick.market.clone(),
-            tick.trade_price,
-            tick.change_rate,
-        );
+        self.broadcast(WebSocketMessage::PriceUpdate {
+            market: tick.market.clone(),
+            price: tick.trade_price,
+            change_rate: tick.change_rate,
+            timestamp: Utc::now(),
+        });
     }
 
     /// Add notification and broadcast
@@ -296,19 +297,23 @@ impl WebServer {
         }
         .to_string();
 
-        self.broadcaster
-            .broadcast_notification(notif_type, notification.message);
+        self.broadcast(WebSocketMessage::Notification {
+            notification_type: notif_type,
+            message: notification.message,
+            timestamp: Utc::now(),
+        });
     }
 
     /// Add trade and broadcast
     pub async fn add_trade(&self, trade: TradeRecord) {
         self.trading_state.add_trade(trade.clone()).await;
-        self.broadcaster.broadcast_trade(
-            trade.market.clone(),
-            trade.trade_type.clone(),
-            trade.price,
-            trade.amount,
-        );
+        self.broadcast(WebSocketMessage::TradeUpdate {
+            market: trade.market,
+            trade_type: trade.trade_type,
+            price: trade.price,
+            amount: trade.amount,
+            timestamp: Utc::now(),
+        });
     }
 }
 

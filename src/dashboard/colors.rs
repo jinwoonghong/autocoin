@@ -55,10 +55,10 @@ impl ColorScheme {
     /// Create light theme
     pub fn light() -> Self {
         Self {
-            running: Color::DarkGreen,
-            idle: Color::DarkYellow,
+            running: Color::Rgb(0, 128, 0),  // DarkGreen
+            idle: Color::Rgb(128, 128, 0),    // DarkYellow/Olive
             error: Color::Red,
-            positive_pnl: Color::DarkGreen,
+            positive_pnl: Color::Rgb(0, 128, 0),
             negative_pnl: Color::Red,
             border: Color::Blue,
             header: Color::Cyan,

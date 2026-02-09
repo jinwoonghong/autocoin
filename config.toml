@@ -1,0 +1,84 @@
+# AutoCoin Configuration File
+# This file contains all settings for the AutoCoin trading bot
+#
+# Environment Variables Support:
+# API keys can be set via environment variables instead of this file.
+# Environment variables take precedence over values in this file.
+#
+# Required environment variables:
+#   UPBIT_ACCESS_KEY - Your Upbit API Access Key
+#   UPBIT_SECRET_KEY - Your Upbit API Secret Key
+#
+# Optional environment variables:
+#   UPBIT_API_URL - Upbit REST API URL (default: https://api.upbit.com/v1)
+#   UPBIT_WS_URL - Upbit WebSocket URL (default: wss://api.upbit.com/websocket/v1)
+#   DISCORD_WEBHOOK_URL - Discord webhook URL for notifications
+#   LOG_LEVEL - Log level: trace, debug, info, warn, error
+#
+# If environment variables are set, this file is optional for API credentials.
+
+# Upbit API Configuration
+[upbit]
+# API URLs (normally don't need to change)
+api_url = "https://api.upbit.com/v1"
+ws_url = "wss://api.upbit.com/websocket/v1"
+
+# API Keys - Can be set via environment variables: UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY
+# If environment variables are set, these values are ignored.
+access_key = ""
+secret_key = ""
+
+# Rate limiting (requests per second)
+rate_limit = 10
+
+# Trading Configuration
+[trading]
+# Target number of coins to monitor (Top N)
+target_coins = 20
+
+# Profit settings
+profit_rate = 0.10        # 10% target profit
+stop_loss_rate = 0.05     # 5% stop loss
+
+# Surge detection settings
+surge_threshold = 0.05     # 5% price surge to trigger trading
+surge_timeframe_minutes = 60  # Check over 60 minutes
+volume_multiplier = 2.0   # 2x average volume trigger
+
+# Order settings
+min_order_amount = 5000.0  # Minimum order in KRW
+max_position_ratio = 0.5   # Max 50% of balance per position
+max_positions = 1         # Maximum concurrent positions
+
+# Discord Configuration
+[discord]
+# Enable/disable Discord notifications
+enabled = false
+
+# Discord webhook URL (required if enabled)
+webhook_url = "YOUR_DISCORD_WEBHOOK_URL_HERE"
+
+# Notification filters
+notify_on_buy = true
+notify_on_sell = true
+notify_on_signal = true
+notify_on_error = true
+
+# System Configuration
+[system]
+# Database path
+db_path = "./data/trading.db"
+
+# Data directory
+data_dir = "./data"
+
+# Logging Configuration
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Use JSON format for logs (recommended for production)
+json_format = true
+
+# Optional log file path (comment out to disable file logging)
+# log_file = "./logs/autocoin.log"

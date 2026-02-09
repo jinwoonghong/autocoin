@@ -83,7 +83,7 @@ impl ExecutionAgent {
                     // 실패 결과도 전송
                     if let Some(tx) = &self.order_tx {
                         let error_result = OrderResult::failure(
-                            "", // market은 decision에서 가져와야 함
+                            String::new(), // market은 decision에서 가져와야 함
                             OrderSide::Bid,
                             e.to_string(),
                         );

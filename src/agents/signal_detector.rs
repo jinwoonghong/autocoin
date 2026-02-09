@@ -92,6 +92,9 @@ impl SignalDetector {
     ) -> (Self, mpsc::Sender<PriceTick>) {
         let (price_tx, price_rx) = mpsc::channel(1000);
 
+        // Clone the sender before moving it into the struct
+        let price_tx_for_return = price_tx.clone();
+
         let detector = Self {
             config,
             history: PriceHistory::new(10000),
@@ -100,7 +103,7 @@ impl SignalDetector {
             signal_tx: None,
         };
 
-        (detector, price_tx)
+        (detector, price_tx_for_return)
     }
 
     /// 신호 출력 채널 설정
@@ -110,7 +113,7 @@ impl SignalDetector {
     }
 
     /// 신호 감지 시작
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> crate::error::Result<()> {
         info!("Starting signal detector");
 
         while let Some(tick) = self.signal_rx.recv().await {
@@ -180,7 +183,7 @@ impl SignalDetector {
     pub async fn spawn(
         config: TradingConfig,
         price_rx: mpsc::Receiver<PriceTick>,
-    ) -> Result<mpsc::Receiver<Signal>> {
+    ) -> crate::error::Result<mpsc::Receiver<Signal>> {
         let (detector, price_tx) = Self::new(config, price_rx);
         let (signal_tx, signal_rx) = mpsc::channel(1000);
 

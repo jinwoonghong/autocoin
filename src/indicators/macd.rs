@@ -79,8 +79,8 @@ impl MACD {
 
     /// 불리시 크로스 감지 (REQ-307: MACD가 Signal을 상향 돌파)
     pub fn is_bullish_cross(&self) -> bool {
-        match (&self.prev_macd, &self.prev_signal, &self.current_value) {
-            (Some(&prev_macd), Some(&prev_signal), Some(curr)) => {
+        match (self.prev_macd, self.prev_signal, &self.current_value) {
+            (Some(prev_macd), Some(prev_signal), Some(curr)) => {
                 // 이전: MACD <= Signal, 현재: MACD > Signal
                 prev_macd <= prev_signal && curr.macd > curr.signal
             }
@@ -90,8 +90,8 @@ impl MACD {
 
     /// 베어리시 크로스 감지 (REQ-308: MACD가 Signal을 하향 이탈)
     pub fn is_bearish_cross(&self) -> bool {
-        match (&self.prev_macd, &self.prev_signal, &self.current_value) {
-            (Some(&prev_macd), Some(&prev_signal), Some(curr)) => {
+        match (self.prev_macd, self.prev_signal, &self.current_value) {
+            (Some(prev_macd), Some(prev_signal), Some(curr)) => {
                 // 이전: MACD >= Signal, 현재: MACD < Signal
                 prev_macd >= prev_signal && curr.macd < curr.signal
             }

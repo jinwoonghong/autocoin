@@ -4,7 +4,7 @@
 
 use thiserror::Error;
 
-pub use types::TradingError;
+pub use types::{TradingError, UpbitError};
 
 mod types {
     use super::Error;
@@ -66,6 +66,26 @@ mod types {
         /// IO 에러
         #[error("IO error: {0}")]
         Io(#[from] std::io::Error),
+
+        /// Serde JSON 에러
+        #[error("JSON error: {0}")]
+        Json(#[from] serde_json::Error),
+
+        /// Reqwest HTTP 에러
+        #[error("HTTP error: {0}")]
+        Http(#[from] reqwest::Error),
+
+        /// SQLx 데이터베이스 에러
+        #[error("Database error: {0}")]
+        DatabaseError(#[from] sqlx::Error),
+
+        /// 기타 에러
+        #[error("Error: {0}")]
+        Other(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+        /// 설정 에러
+        #[error("Configuration error: {0}")]
+        ConfigError(String),
     }
 
     impl TradingError {
@@ -134,6 +154,13 @@ mod types {
                 },
             }
         }
+    }
+}
+
+// Additional From implementations
+impl From<String> for TradingError {
+    fn from(s: String) -> Self {
+        TradingError::ConfigError(s)
     }
 }
 

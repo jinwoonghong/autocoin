@@ -28,9 +28,9 @@ pub mod types;
 pub mod web;
 
 // Private modules
-mod db;
-mod agents;
-mod upbit;
+pub mod db;
+pub mod agents;
+pub mod upbit;
 mod discord;
 mod strategy;
 

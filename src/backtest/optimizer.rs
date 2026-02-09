@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::sync::Arc as StdArc;
 
 /// 파라미터 범위
 ///
@@ -130,7 +131,7 @@ impl OptimizationResult {
 }
 
 /// 최적화 진행 상황 콜백
-pub type ProgressCallback = Box<dyn Fn(usize, usize) + Send + Sync>;
+pub type ProgressCallback = Arc<dyn Fn(usize, usize) + Send + Sync>;
 
 /// 파라미터 최적화 도구
 ///
@@ -278,7 +279,8 @@ impl ParameterOptimizer {
             let completed = Arc::clone(&completed);
             let strategy_factory = strategy_factory.clone();
             let backtest_config = backtest_config.clone();
-            let progress_callback = &progress_callback;
+            // Clone the callback for each thread since Fn is reference-counted
+            let progress_callback = StdArc::clone(&progress_callback);
 
             let handle = thread::spawn(move || {
                 for _params in chunk {
@@ -380,11 +382,11 @@ impl ParameterOptimizer {
         let (name, values) = &param_values[depth];
 
         for value in values {
-            current.insert(name.clone(), *value);
+            current.insert((*name).clone(), *value);
             Self::generate_combinations_recursive(param_values, depth + 1, current, results);
         }
 
-        current.remove(name);
+        current.remove(name.as_str());
     }
 
     /// 단일 백테스트 실행
@@ -396,7 +398,8 @@ impl ParameterOptimizer {
         target: OptimizationTarget,
     ) -> Result<OptimizationResult> {
         let mut strategy = strategy_factory();
-        strategy.set_parameters(parameters.clone())?;
+        strategy.set_parameters(parameters.clone())
+            .map_err(|e| crate::error::TradingError::InvalidParameter(e.to_string()))?;
 
         let simulator = BacktestSimulator::new(config.clone());
         let candles = candles.to_vec();

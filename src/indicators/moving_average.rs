@@ -156,7 +156,7 @@ impl Indicator for EMA {
 }
 
 impl EMA {
-    fn current_value(&self) -> Option<f64> {
+    pub(crate) fn current_value(&self) -> Option<f64> {
         self.current_ema
     }
 }

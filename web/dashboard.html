@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCoin Trading Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-yellow: #d29922;
+            --accent-purple: #a371f7;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 0;
+            margin-bottom: 24px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .logo-text h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .logo-text p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online {
+            background: var(--accent-green);
+        }
+
+        .status-dot.offline {
+            background: var(--accent-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .card-header .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge.green { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+        .badge.red { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .badge.blue { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Balance Card */
+        .balance-card {
+            grid-column: span 4;
+        }
+
+        .balance-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .balance-sub {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Position Card */
+        .position-card {
+            grid-column: span 4;
+        }
+
+        .position-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .position-item {
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .position-item label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .position-item .value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .pnl-positive { color: var(--accent-green); }
+        .pnl-negative { color: var(--accent-red); }
+
+        /* Agents Card */
+        .agents-card {
+            grid-column: span 4;
+        }
+
+        .agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .agent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .agent-name {
+            font-weight: 500;
+        }
+
+        .agent-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .agent-status.running { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+        .agent-status.idle { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+        .agent-status.error { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .agent-status.disconnected { background: rgba(110, 118, 129, 0.2); color: var(--text-muted); }
+
+        /* Market Prices Card */
+        .market-card {
+            grid-column: span 6;
+        }
+
+        .market-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .market-table th {
+            text-align: left;
+            padding: 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .market-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .market-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .market-symbol {
+            font-weight: 600;
+        }
+
+        .price-positive { color: var(--accent-green); }
+        .price-negative { color: var(--accent-red); }
+
+        /* Notifications Card */
+        .notifications-card {
+            grid-column: span 6;
+        }
+
+        .notification-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .notification-icon.info { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+        .notification-icon.buy { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+        .notification-icon.sell { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .notification-icon.error { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .notification-icon.signal { background: rgba(163, 113, 247, 0.2); color: var(--accent-purple); }
+        .notification-icon.warning { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-text {
+            font-size: 14px;
+        }
+
+        .notification-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+        }
+
+        .connection-status.connected {
+            border-color: var(--accent-green);
+        }
+
+        .connection-status.disconnected {
+            border-color: var(--accent-red);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .balance-card, .position-card, .agents-card {
+                grid-column: span 6;
+            }
+            .market-card, .notifications-card {
+                grid-column: span 12;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .balance-card, .position-card, .agents-card,
+            .market-card, .notifications-card {
+                grid-column: span 1;
+            }
+            .header-content {
+                flex-direction: column;
+                gap: 16px;
+            }
+            .status-bar {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">AC</div>
+                    <div class="logo-text">
+                        <h1>AutoCoin</h1>
+                        <p>Automated Trading Dashboard</p>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <span class="status-dot" id="systemStatusDot"></span>
+                        <span id="systemStatus">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span id="uptime">0s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="dashboard-grid">
+            <!-- Balance Card -->
+            <div class="card balance-card">
+                <div class="card-header">
+                    <h3>Balance</h3>
+                    <span class="badge blue">KRW</span>
+                </div>
+                <div class="card-body">
+                    <div class="loading" id="balanceLoading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div id="balanceContent" style="display: none;">
+                        <div class="balance-value" id="totalBalance">0 KRW</div>
+                        <div class="balance-sub">
+                            <span>Available: <span id="availableBalance">0</span> KRW</span>
+                            <span>PnL: <span id="todayPnl">0</span> KRW</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Position Card -->
+            <div class="card position-card">
+                <div class="card-header">
+                    <h3>Position</h3>
+                    <span class="badge" id="positionBadge">None</span>
+                </div>
+                <div class="card-body">
+                    <div class="loading" id="positionLoading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div id="positionContent" style="display: none;">
+                        <div class="position-info">
+                            <div class="position-item">
+                                <label>Market</label>
+                                <div class="value" id="posMarket">-</div>
+                            </div>
+                            <div class="position-item">
+                                <label>Amount</label>
+                                <div class="value" id="posAmount">-</div>
+                            </div>
+                            <div class="position-item">
+                                <label>Entry Price</label>
+                                <div class="value" id="posEntry">-</div>
+                            </div>
+                            <div class="position-item">
+                                <label>Current Price</label>
+                                <div class="value" id="posCurrent">-</div>
+                            </div>
+                            <div class="position-item">
+                                <label>Unrealized PnL</label>
+                                <div class="value" id="posPnl">-</div>
+                            </div>
+                            <div class="position-item">
+                                <label>PnL %</label>
+                                <div class="value" id="posPnlRate">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="empty-state" id="positionEmpty" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <p>No open position</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agents Card -->
+            <div class="card agents-card">
+                <div class="card-header">
+                    <h3>Agents</h3>
+                    <span class="badge blue" id="agentCount">0</span>
+                </div>
+                <div class="card-body">
+                    <div class="loading" id="agentsLoading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div class="agent-list" id="agentList" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Market Prices Card -->
+            <div class="card market-card">
+                <div class="card-header">
+                    <h3>Market Prices</h3>
+                    <span class="badge blue" id="marketCount">0</span>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <div class="loading" id="marketLoading">
+                        <div class="spinner"></div>
+                    </div>
+                    <table class="market-table" id="marketTable" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Market</th>
+                                <th>Price</th>
+                                <th>Change 24h</th>
+                                <th>Volume</th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notifications Card -->
+            <div class="card notifications-card">
+                <div class="card-header">
+                    <h3>Notifications</h3>
+                    <span class="badge blue" id="notificationCount">0</span>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <div class="loading" id="notificationsLoading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div class="notification-list" id="notificationList" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="connection-status disconnected" id="connectionStatus">
+        <span class="status-dot" id="wsDot"></span>
+        <span id="wsStatus">Connecting...</span>
+    </div>
+
+    <script>
+        // API configuration
+        const API_BASE = window.location.protocol + '//' + window.location.hostname + ':8080/api';
+        const WS_URL = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + ':8080/ws';
+
+        // State
+        let ws = null;
+        let reconnectTimer = null;
+        let data = {
+            balance: null,
+            position: null,
+            agents: [],
+            markets: [],
+            notifications: []
+        };
+
+        // Utility functions
+        function formatNumber(num, decimals = 2) {
+            if (num === null || num === undefined) return '-';
+            return num.toLocaleString('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function formatCurrency(num) {
+            if (num === null || num === undefined) return '-';
+            return new Intl.NumberFormat('en-US').format(Math.floor(num));
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function formatUptime(seconds) {
+            if (seconds < 60) return seconds + 's';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
+            return Math.floor(seconds / 86400) + 'd';
+        }
+
+        function setPnLClass(element, value) {
+            element.classList.remove('pnl-positive', 'pnl-negative');
+            if (value > 0) element.classList.add('pnl-positive');
+            else if (value < 0) element.classList.add('pnl-negative');
+        }
+
+        // Update functions
+        function updateBalance(balance) {
+            document.getElementById('balanceLoading').style.display = 'none';
+            document.getElementById('balanceContent').style.display = 'block';
+            document.getElementById('totalBalance').textContent = formatCurrency(balance.total_asset_value) + ' KRW';
+            document.getElementById('availableBalance').textContent = formatCurrency(balance.available_krw);
+            document.getElementById('todayPnl').textContent = formatCurrency(balance.today_pnl);
+
+            const pnlEl = document.getElementById('todayPnl');
+            setPnLClass(pnlEl, balance.today_pnl);
+        }
+
+        function updatePosition(position) {
+            document.getElementById('positionLoading').style.display = 'none';
+
+            if (position) {
+                document.getElementById('positionContent').style.display = 'block';
+                document.getElementById('positionEmpty').style.display = 'none';
+                document.getElementById('positionBadge').textContent = 'Open';
+                document.getElementById('positionBadge').className = 'badge green';
+
+                document.getElementById('posMarket').textContent = position.market;
+                document.getElementById('posAmount').textContent = formatNumber(position.amount, 6);
+                document.getElementById('posEntry').textContent = formatCurrency(position.entry_price);
+                document.getElementById('posCurrent').textContent = formatCurrency(position.current_price);
+
+                const pnlEl = document.getElementById('posPnl');
+                const pnlRateEl = document.getElementById('posPnlRate');
+                pnlEl.textContent = formatCurrency(position.pnl_amount);
+                pnlRateEl.textContent = formatNumber(position.pnl_rate * 100, 2) + '%';
+
+                setPnLClass(pnlEl, position.pnl_amount);
+                setPnLClass(pnlRateEl, position.pnl_rate);
+            } else {
+                document.getElementById('positionContent').style.display = 'none';
+                document.getElementById('positionEmpty').style.display = 'block';
+                document.getElementById('positionBadge').textContent = 'None';
+                document.getElementById('positionBadge').className = 'badge';
+            }
+        }
+
+        function updateAgents(agents) {
+            document.getElementById('agentsLoading').style.display = 'none';
+            document.getElementById('agentList').style.display = 'flex';
+            document.getElementById('agentCount').textContent = agents.length;
+
+            const container = document.getElementById('agentList');
+            container.innerHTML = agents.map(agent => `
+                <div class="agent-item">
+                    <span class="agent-name">${agent.name}</span>
+                    <span class="agent-status ${agent.status.toLowerCase()}">${agent.status}</span>
+                </div>
+            `).join('');
+        }
+
+        function updateMarkets(markets) {
+            document.getElementById('marketLoading').style.display = 'none';
+            document.getElementById('marketTable').style.display = 'table';
+            document.getElementById('marketCount').textContent = markets.length;
+
+            const tbody = document.getElementById('marketTableBody');
+            tbody.innerHTML = markets.map(m => {
+                const changeClass = m.change_rate >= 0 ? 'price-positive' : 'price-negative';
+                const changeSign = m.change_rate >= 0 ? '+' : '';
+                return `
+                    <tr>
+                        <td class="market-symbol">${m.market}</td>
+                        <td>${formatCurrency(m.price)}</td>
+                        <td class="${changeClass}">${changeSign}${formatNumber(m.change_rate * 100, 2)}%</td>
+                        <td>${formatNumber(m.volume, 0)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateNotifications(notifications) {
+            document.getElementById('notificationsLoading').style.display = 'none';
+            document.getElementById('notificationList').style.display = 'block';
+            document.getElementById('notificationCount').textContent = notifications.length;
+
+            const container = document.getElementById('notificationList');
+            const icons = {
+                info: 'i',
+                buy: 'B',
+                sell: 'S',
+                error: 'E',
+                signal: '!',
+                warning: 'W'
+            };
+
+            container.innerHTML = notifications.slice().reverse().map(n => `
+                <div class="notification-item">
+                    <div class="notification-icon ${n.notification_type}">${icons[n.notification_type] || 'N'}</div>
+                    <div class="notification-content">
+                        <div class="notification-text">${n.message}</div>
+                        <div class="notification-time">${formatTime(n.timestamp)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateSystemStatus(status) {
+            const dot = document.getElementById('systemStatusDot');
+            const text = document.getElementById('systemStatus');
+            const uptime = document.getElementById('uptime');
+
+            dot.className = 'status-dot ' + (status.running ? 'online' : 'offline');
+            text.textContent = status.running ? 'Running' : 'Stopped';
+            uptime.textContent = formatUptime(status.uptime_seconds);
+        }
+
+        // API calls
+        async function fetchDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard`);
+                if (!response.ok) throw new Error('Failed to fetch dashboard');
+                const data = await response.json();
+
+                if (data.balance) updateBalance(data.balance);
+                updatePosition(data.position);
+                if (data.agents) updateAgents(data.agents);
+                if (data.market_prices) updateMarkets(data.market_prices);
+                if (data.notifications) updateNotifications(data.notifications);
+            } catch (error) {
+                console.error('Failed to fetch dashboard:', error);
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                if (!response.ok) throw new Error('Failed to fetch status');
+                const status = await response.json();
+                updateSystemStatus(status);
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+            }
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            if (ws) {
+                ws.close();
+            }
+
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                setConnectionState(true);
+                if (reconnectTimer) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = null;
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleWebSocketMessage(message);
+                } catch (error) {
+                    console.error('Failed to parse WebSocket message:', error);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                setConnectionState(false);
+                scheduleReconnect();
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                setConnectionState(false);
+            };
+        }
+
+        function handleWebSocketMessage(message) {
+            switch (message.type) {
+                case 'priceUpdate':
+                    // Update market price in the list
+                    if (data.markets) {
+                        const idx = data.markets.findIndex(m => m.market === message.data.market);
+                        if (idx !== -1) {
+                            data.markets[idx].price = message.data.price;
+                            data.markets[idx].change_rate = message.data.change_rate;
+                            updateMarkets(data.markets);
+                        }
+                    }
+                    break;
+                case 'positionUpdate':
+                    data.position = {
+                        market: message.data.market,
+                        entry_price: message.data.entry_price,
+                        current_price: message.data.current_price,
+                        pnl_rate: message.data.pnl_rate,
+                        pnl_amount: message.data.entry_price * message.data.pnl_rate // Approximate
+                    };
+                    updatePosition(data.position);
+                    break;
+                case 'agentStatus':
+                    const agentIdx = data.agents.findIndex(a => a.name === message.data.agent);
+                    if (agentIdx !== -1) {
+                        data.agents[agentIdx].status = message.data.status;
+                        if (message.data.message) {
+                            data.agents[agentIdx].message = message.data.message;
+                        }
+                    } else {
+                        data.agents.push({
+                            name: message.data.agent,
+                            status: message.data.status,
+                            message: message.data.message,
+                            last_update: new Date().toISOString()
+                        });
+                    }
+                    updateAgents(data.agents);
+                    break;
+                case 'balanceUpdate':
+                    data.balance = {
+                        krw_balance: message.data.krw_balance,
+                        available_krw: message.data.available_krw,
+                        total_asset_value: message.data.total_asset_value,
+                        today_pnl: 0,
+                        today_pnl_rate: 0
+                    };
+                    updateBalance(data.balance);
+                    break;
+                case 'notification':
+                    data.notifications.push({
+                        notification_type: message.data.notification_type,
+                        message: message.data.message,
+                        timestamp: message.data.timestamp
+                    });
+                    updateNotifications(data.notifications);
+                    break;
+                case 'systemStatus':
+                    updateSystemStatus({
+                        running: message.data.status === 'running',
+                        uptime_seconds: 0 // Will be updated by status endpoint
+                    });
+                    break;
+            }
+        }
+
+        function setConnectionState(connected) {
+            const el = document.getElementById('connectionStatus');
+            const dot = document.getElementById('wsDot');
+            const text = document.getElementById('wsStatus');
+
+            if (connected) {
+                el.className = 'connection-status connected';
+                dot.className = 'status-dot online';
+                text.textContent = 'Connected';
+            } else {
+                el.className = 'connection-status disconnected';
+                dot.className = 'status-dot offline';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer) return;
+            reconnectTimer = setTimeout(() => {
+                console.log('Attempting to reconnect...');
+                connectWebSocket();
+            }, 5000);
+        }
+
+        // Initialize
+        async function init() {
+            // Fetch initial data
+            await fetchDashboard();
+            await fetchStatus();
+
+            // Update status periodically
+            setInterval(fetchStatus, 30000); // Every 30 seconds
+
+            // Connect WebSocket
+            connectWebSocket();
+        }
+
+        // Start the dashboard
+        init();
+    </script>
+</body>
+</html>

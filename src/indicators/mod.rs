@@ -103,8 +103,10 @@ impl IndicatorCache {
 
         // LRU eviction: 캐시 크기 초과 시 오래된 항목 제거
         if indicator_cache.len() >= self.max_cache_size {
-            if let Some oldest_key) = indicator_cache.keys().min() {
-                indicator_cache.remove(oldest_key);
+            // Clone the key to avoid borrow checker issue
+            let oldest_key = indicator_cache.keys().min().cloned();
+            if let Some(key) = oldest_key {
+                indicator_cache.remove(&key);
             }
         }
 

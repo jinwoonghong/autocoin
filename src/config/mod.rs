@@ -1,11 +1,26 @@
 //! Configuration management
 //!
 //! 환경 변수와 설정 파일에서 시스템 설정을 로드합니다.
+//!
+//! # Environment Variables
+//!
+//! API 키는 환경 변수로 설정할 수 있으며, 환경 변수가 설정된 경우 설정 파일보다 우선합니다:
+//!
+//! - `UPBIT_ACCESS_KEY`: Upbit API Access Key
+//! - `UPBIT_SECRET_KEY`: Upbit API Secret Key
+//! - `UPBIT_API_URL`: Upbit REST API URL (optional, default: https://api.upbit.com/v1)
+//! - `UPBIT_WS_URL`: Upbit WebSocket URL (optional, default: wss://api.upbit.com/websocket/v1)
+//! - `DISCORD_WEBHOOK_URL`: Discord Webhook URL
+//! - `LOG_LEVEL`: Log level (trace, debug, info, warn, error)
+//!
+//! # Configuration File
+//!
+//! `config.toml` 파일이 존재하지 않아도 환경 변수가 설정되어 있으면 정상 동작합니다.
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-pub use settings::Settings;
+pub use settings::{Settings, TradingConfig};
 
 mod settings {
     use super::*;
@@ -29,38 +44,67 @@ mod settings {
 
     impl Settings {
         /// 설정 파일과 환경 변수에서 설정 로드
-        pub fn load() -> Result<Self, config::ConfigError> {
-            let mut settings = config::Config::builder();
-
-            // 기본 설정 추가
-            settings = settings
-                .add_source(config::File::with_name("config/default").required(false))
-                .add_source(
-                    config::Environment::default()
-                        .prefix("AUTOCOIN")
-                        .prefix_separator("_")
-                        .try_parsing(true),
-                );
-
+        ///
+        /// 설정 파일(config.toml)이 없어도 환경 변수로 API 키를 설정할 수 있습니다.
+        /// 환경 변수: UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY
+        pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
             // .env 파일 로드
             dotenvy::dotenv().ok();
 
-            let settings = settings.build()?.try_deserialize::<Settings>()?;
+            // 기본값으로 설정 초기화
+            let default_settings = Settings::default();
 
-            // 환경 변수로 오버라이드
-            Ok(settings::with_env_override(settings))
+            // 설정 파일 로드 시도 (선택적)
+            let file_settings = Self::load_from_file().unwrap_or_else(|_| Settings::default());
+
+            // 환경 변수로 오버라이드 (파일 설정보다 우선)
+            let settings = settings::with_env_override(file_settings);
+
+            // 파일 로드 실패 시 환경 변수만으로 동작하는지 확인
+            if settings.upbit.access_key.is_empty() && default_settings.upbit.access_key.is_empty() {
+                // 파일도 없고 환경 변수도 없는 경우 - 기본값 반환 (나중에 validate()에서 검증됨)
+            }
+
+            Ok(settings)
+        }
+
+        /// 설정 파일에서만 로드 (파일이 없으면 오류)
+        fn load_from_file() -> Result<Settings, Box<dyn std::error::Error>> {
+            let config_path = "config.toml";
+            if !Path::new(config_path).exists() {
+                return Err("Config file not found".into());
+            }
+
+            let content = std::fs::read_to_string(config_path)?;
+            let settings: Settings = toml::from_str(&content)?;
+            Ok(settings)
         }
 
         /// 개발 환경용 설정 로드
-        pub fn load_dev() -> Result<Self, config::ConfigError> {
-            let mut settings = config::Config::builder();
+        pub fn load_dev() -> Result<Self, Box<dyn std::error::Error>> {
+            // .env 파일 로드
+            dotenvy::dotenv().ok();
 
-            settings = settings
-                .add_source(config::File::with_name("config/development").required(false))
-                .add_source(config::Environment::default().prefix("AUTOCOIN"));
+            // 개발용 기본값
+            let default_settings = Settings::default();
 
-            let settings = settings.build()?.try_deserialize::<Settings>()?;
-            Ok(settings::with_env_override(settings))
+            // 개발 설정 파일 로드 시도 (선택적)
+            let file_settings = Self::load_from_file().unwrap_or(default_settings);
+
+            // 환경 변수로 오버라이드
+            Ok(settings::with_env_override(file_settings))
+        }
+    }
+
+    impl Default for Settings {
+        fn default() -> Self {
+            Self {
+                upbit: UpbitConfig::default(),
+                trading: TradingConfig::default(),
+                discord: DiscordConfig::default(),
+                system: SystemConfig::default(),
+                logging: LoggingConfig::default(),
+            }
         }
     }
 

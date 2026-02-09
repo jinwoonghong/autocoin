@@ -10,7 +10,10 @@ pub mod websocket;
 
 // Public exports
 pub use server::WebServer;
-pub use state::{TradingState, WebSocketMessage};
+pub use state::{MarketPrice, TradingState, TradeRecord, WebSocketMessage};
+
+// Re-export PositionData from dashboard for convenience
+pub use crate::dashboard::PositionData;
 
 use crate::dashboard::{AgentStatus, AgentState as DashboardAgentState, NotificationType};
 use crate::types::trading::{Position, PriceTick, Signal};
@@ -228,6 +231,13 @@ pub struct ErrorResponse {
     pub code: Option<String>,
     /// Timestamp
     pub timestamp: DateTime<Utc>,
+}
+
+impl axum::response::IntoResponse for ErrorResponse {
+    fn into_response(self) -> axum::response::Response {
+        let status = axum::http::StatusCode::BAD_REQUEST;
+        (status, axum::Json(self)).into_response()
+    }
 }
 
 impl ErrorResponse {

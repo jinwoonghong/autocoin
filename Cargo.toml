@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["AutoCoin Team"]
 description = "Upbit Automated Trading Agent System"
+default-run = "autocoin"
 
 [dependencies]
 # Async Runtime
@@ -11,7 +12,7 @@ tokio = { version = "1.40", features = ["full"] }
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono", "json"] }
 
 # Web
 reqwest = { version = "0.12", features = ["json"] }
@@ -66,11 +67,12 @@ crossterm = "0.28"
 clap = { version = "4.5", features = ["derive"] }
 
 # Web Server
-axum = "0.7"
+axum = { version = "0.7", features = ["ws"] }
 tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+
+# Browser opening
+open = "5.0"
 
 [dev-dependencies]
 mockito = "1.5"
@@ -81,6 +83,14 @@ criterion = "0.5"
 [[bin]]
 name = "autocoin"
 path = "src/main.rs"
+
+[[bin]]
+name = "test-websocket"
+path = "src/test_websocket.rs"
+
+[[bin]]
+name = "diagnose-websocket"
+path = "src/diagnose_websocket.rs"
 
 [lib]
 name = "autocoin"

@@ -91,11 +91,11 @@ pub fn render_position_panel(
             ]),
             Line::from(vec![
                 Span::styled("Entry:  ", colors.text_style()),
-                Span::styled(format!("{:,.0}", pos.entry_price), colors.text_style()),
+                Span::styled(format!("{:.0}", pos.entry_price), colors.text_style()),
             ]),
             Line::from(vec![
                 Span::styled("Current:", colors.text_style()),
-                Span::styled(format!("{:,.0}", pos.current_price), colors.text_style()),
+                Span::styled(format!("{:.0}", pos.current_price), colors.text_style()),
             ]),
             Line::from(vec![
                 Span::styled("Amount: ", colors.text_style()),
@@ -177,26 +177,26 @@ pub fn render_balance_panel(
         Line::from(vec![
             Span::styled("KRW Balance: ", colors.text_style()),
             Span::styled(
-                format!("{:,.0}", balance.krw_balance),
+                format!("{:.0}", balance.krw_balance),
                 colors.highlight_style(),
             ),
         ]),
         Line::from(vec![
             Span::styled("Available:  ", colors.text_style()),
             Span::styled(
-                format!("{:,.0}", balance.available_krw),
+                format!("{:.0}", balance.available_krw),
                 colors.text_style(),
             ),
         ]),
         Line::from(vec![
             Span::styled("Locked:     ", colors.text_style()),
-            Span::styled(format!("{:,.0}", balance.locked_krw), colors.text_style()),
+            Span::styled(format!("{:.0}", balance.locked_krw), colors.text_style()),
         ]),
         Line::from(""),
         Line::from(vec![
             Span::styled("Total Asset: ", colors.text_style()),
             Span::styled(
-                format!("{:,.0}", balance.total_asset_value),
+                format!("{:.0}", balance.total_asset_value),
                 colors.highlight_style(),
             ),
         ]),
@@ -247,7 +247,7 @@ pub fn render_market_panel(
 
             ListItem::new(Line::from(vec![
                 Span::styled(format!("{:<12}", price.market), colors.text_style()),
-                Span::styled(format!("{:>12,.0}", price.price), colors.text_style()),
+                Span::styled(format!("{:>12.0}", price.price), colors.text_style()),
                 Span::raw(" "),
                 Span::styled(
                     format!("{}{:.2}%", change_sign, price.change_rate * 100.0),
@@ -257,7 +257,7 @@ pub fn render_market_panel(
         })
         .collect();
 
-    let list = List::new(items).block(block).alignment(Alignment::Left);
+    let list = List::new(items).block(block);
 
     frame.render_widget(list, area);
 }
@@ -288,7 +288,7 @@ pub fn render_notifications_panel(
         })
         .collect();
 
-    let list = List::new(items).block(block).alignment(Alignment::Left);
+    let list = List::new(items).block(block);
 
     frame.render_widget(list, area);
 }

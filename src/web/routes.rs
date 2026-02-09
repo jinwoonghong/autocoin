@@ -5,7 +5,7 @@
 use super::handlers;
 use super::websocket::websocket_handler;
 use axum::{
-    routing::{get, get_service},
+    routing::{delete, get, get_service, post, put},
     Router,
 };
 use std::sync::Arc;
@@ -27,7 +27,7 @@ pub fn create_router(state: Arc<TradingState>) -> Router {
     // API routes
     let api_routes = Router::new()
         .route("/status", get(handlers::get_status))
-        .route("/position", get(handlers::get_position))
+        .route("/position", get(handlers::get_position).delete(handlers::close_position))
         .route("/balance", get(handlers::get_balance))
         .route("/trades", get(handlers::get_trades))
         .route("/markets", get(handlers::get_markets))
@@ -49,16 +49,14 @@ pub fn create_router(state: Arc<TradingState>) -> Router {
         .route("/system/stop", post(handlers::system_stop))
         .route("/system/restart", post(handlers::system_restart))
         // Manual trading endpoints
-        .route("/orders", post(handlers::create_order))
-        .route("/position", delete(handlers::close_position));
-
-    // WebSocket route
-    let ws_routes = Router::new().route("/ws", get(websocket_handler));
+        .route("/orders", post(handlers::create_order));
 
     // Combine all routes
     Router::new()
+        .route("/", get(handlers::serve_dashboard))
+        .route("/dashboard", get(handlers::serve_dashboard))
         .nest("/api", api_routes)
-        .nest("/ws", ws_routes)
+        .route("/ws", get(websocket_handler))
         .route("/health", get(handlers::health_check))
         .nest_service("/assets", get_service(ServeDir::new("assets")))
         .fallback(handlers::not_found)
@@ -77,7 +75,7 @@ pub fn create_router_with_static(state: Arc<TradingState>, static_dir: &str) -> 
 
     let api_routes = Router::new()
         .route("/status", get(handlers::get_status))
-        .route("/position", get(handlers::get_position))
+        .route("/position", get(handlers::get_position).delete(handlers::close_position))
         .route("/balance", get(handlers::get_balance))
         .route("/trades", get(handlers::get_trades))
         .route("/markets", get(handlers::get_markets))
@@ -99,10 +97,11 @@ pub fn create_router_with_static(state: Arc<TradingState>, static_dir: &str) -> 
         .route("/system/stop", post(handlers::system_stop))
         .route("/system/restart", post(handlers::system_restart))
         // Manual trading endpoints
-        .route("/orders", post(handlers::create_order))
-        .route("/position", delete(handlers::close_position));
+        .route("/orders", post(handlers::create_order));
 
     Router::new()
+        .route("/", get(handlers::serve_dashboard))
+        .route("/dashboard", get(handlers::serve_dashboard))
         .nest("/api", api_routes)
         .route("/ws", get(websocket_handler))
         .route("/health", get(handlers::health_check))

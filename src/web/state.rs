@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast};
 
 /// Shared trading state
 #[derive(Debug, Clone)]
@@ -27,6 +27,8 @@ pub struct TradingState {
     pub system_status: Arc<RwLock<SystemStatus>>,
     /// Trade history
     pub trade_history: Arc<RwLock<Vec<TradeRecord>>>,
+    /// WebSocket broadcaster
+    pub broadcaster: Arc<broadcast::Sender<WebSocketMessage>>,
 }
 
 /// Market price with timestamp
@@ -170,6 +172,7 @@ pub enum WebSocketMessage {
 impl TradingState {
     /// Create new shared trading state
     pub fn new() -> Self {
+        let (broadcaster, _) = broadcast::channel(100);
         Self {
             position: Arc::new(RwLock::new(None)),
             balance: Arc::new(RwLock::new(BalanceData::default())),
@@ -178,7 +181,18 @@ impl TradingState {
             notifications: Arc::new(RwLock::new(Vec::new())),
             system_status: Arc::new(RwLock::new(SystemStatus::default())),
             trade_history: Arc::new(RwLock::new(Vec::new())),
+            broadcaster: Arc::new(broadcaster),
         }
+    }
+
+    /// Subscribe to WebSocket broadcasts
+    pub fn subscribe_broadcaster(&self) -> broadcast::Receiver<WebSocketMessage> {
+        self.broadcaster.subscribe()
+    }
+
+    /// Broadcast WebSocket message
+    pub fn broadcast(&self, msg: WebSocketMessage) {
+        let _ = self.broadcaster.send(msg);
     }
 
     /// Update position
