@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>autocoin dashboard</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <main>
+    <h1>Autocoin Dashboard</h1>
+    <p>Market: <strong>{{ market }}</strong> / Mode: <strong>{{ 'PAPER' if paper_mode else 'LIVE' }}</strong></p>
+
+    <section class="panel">
+      <div>Status: <span id="status">-</span></div>
+      <div>Cycles: <span id="cycles">0</span></div>
+      <div>Error: <span id="error">-</span></div>
+      <div class="actions">
+        <button id="startBtn">Start</button>
+        <button id="stopBtn">Stop</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Orders</h2>
+      <pre id="orders"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Logs</h2>
+      <pre id="logs"></pre>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
