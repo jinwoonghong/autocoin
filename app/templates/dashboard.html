@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>autocoin dashboard</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Autocoin Dashboard</h1>
+      <p>수동 시작형 자동매매 모니터링</p>
+      <section class="card">
+        <div><strong>Status:</strong> <span id="status">-</span></div>
+        <div><strong>Paper Mode:</strong> <span id="paper">-</span></div>
+        <div><strong>Thread Alive:</strong> <span id="thread">-</span></div>
+        <div><strong>Market:</strong> <span id="market">-</span></div>
+        <div><strong>Last Price:</strong> <span id="price">-</span></div>
+        <div><strong>Signal:</strong> <span id="signal">-</span></div>
+        <div><strong>Iteration:</strong> <span id="iteration">0</span></div>
+        <div><strong>Failures:</strong> <span id="failures">0</span> / <span id="maxFailures">0</span></div>
+        <div><strong>Last Error:</strong> <span id="lastError">-</span></div>
+      </section>
+      <section class="buttons">
+        <button id="startBtn">Start</button>
+        <button id="stopBtn">Stop</button>
+        <button id="resetBtn">Reset</button>
+      </section>
+      <section class="card">
+        <h2>Recent Logs</h2>
+        <pre id="logs"></pre>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
